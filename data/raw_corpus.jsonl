@@ -1,0 +1,8 @@
+{"id":"doc-001","source":"web","text":"<html><body><div class='nav'>首页 | 登录 | 注册</div><p>大模型  训练需要  大量  文本数据。    数据质量决定模型能力的上限。</p><footer>© 2026 All rights reserved</footer></body></html>","meta":{"url":"https://example.com/a","crawl":"2026-10"}}
+{"id":"doc-002","source":"web","text":"Transformer 架构完全依赖注意力机制，摒弃了循环和卷积。它的并行计算能力使大规模预训练成为可能，现代大语言模型几乎都基于解码器-only 的 Transformer 变体构建。","meta":{"url":"https://example.com/b","crawl":"2026-10"}}
+{"id":"doc-003","source":"web","text":"Transformer 架构完全依赖注意力机制，摒弃了循环和卷积。它的并行计算能力使大规模预训练成为可能，现代大语言模型几乎都基于解码器-only 的 Transformer 变体构建。","meta":{"url":"https://mirror.example.com/copy-of-b","crawl":"2026-10"}}
+{"id":"doc-004","source":"web","text":"Transformer 架构完全依赖注意力机制，抛弃了循环和卷积结构。它的并行计算能力让大规模预训练成为可能，当代大语言模型几乎都基于解码器-only 的 Transformer 变体来构建。","meta":{"url":"https://example.com/d","crawl":"2026-10"}}
+{"id":"doc-005","source":"forum","text":"关于微调的常见问题，可以联系我：alice@example.com，或者拨打 138-0000-1234。我会尽快回复大家的问题和疑问。","meta":{"url":"https://forum.example.com/t/42","crawl":"2026-10"}}
+{"id":"doc-006","source":"code","text":"def attention(Q, K, V):\n    scores = Q @ K.T / sqrt(d_k)\n    return softmax(scores) @ V   # 注意力是加权求和\n\n这个函数展示了注意力机制的核心计算。","meta":{"url":"https://github.com/example/repo","crawl":"2026-10"}}
+{"id":"doc-007","source":"web","text":"!!!@@@### 999 ~~~ 点击 点击 点击 购买 <<<>>>","meta":{"url":"https://spam.example.com/x","crawl":"2026-10"}}
+{"id":"doc-008","source":"benchmark","text":"问题：下列哪一项不是 Transformer 的组成部分？A: 自注意力 B: 前馈网络 C: 卷积层 D: 层归一化。答案：C。这是验证集中已存在的基准测试题目。","meta":{"url":"https://eval.example.com/heldout","crawl":"2026-10"}}
