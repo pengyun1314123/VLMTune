@@ -23,9 +23,19 @@ class SimpleBPE:
 
     @staticmethod
     def _get_pairs(word_tokens):
-        pairs = set()
+        """返回相邻 token 对（按首次出现顺序去重）。
+
+        原先返回 set，迭代顺序受 PYTHONHASHSEED 影响：当多个 pair 频率并列时，
+        max()/min() 的选择会随进程变化，导致同一语料训练出的词表不稳定。
+        改为有序列表后，词表与 id 分配完全可复现（静态站点预生成依赖这一点）。
+        """
+        pairs = []
+        seen = set()
         for i in range(len(word_tokens) - 1):
-            pairs.add((word_tokens[i], word_tokens[i + 1]))
+            pair = (word_tokens[i], word_tokens[i + 1])
+            if pair not in seen:
+                seen.add(pair)
+                pairs.append(pair)
         return pairs
 
     def train(self, texts, vocab_size=300, verbose=False):

@@ -169,8 +169,7 @@ conda-meta/
 # Rope project settings
 .ropeproject
 
-# mkdocs/Zensical documentation
-/site
+# site/ 是 GitHub Pages 的发布目录，需要随仓库提交（由 tools/build_static.py 生成）
 
 # mypy
 .mypy_cache/

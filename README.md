@@ -2,6 +2,12 @@
 
 面向零基础学习者的交互式教学工程：从架构原理、核心公式、微调方法底层原理与代码注解，到完整的数据训练流水线，配合**真实运行的样例数据与计算**把每个阶段讲清楚。
 
+## 在线体验（无需部署）
+
+**https://pengyun1314123.github.io/VLMTune/**
+
+完整实验室已发布为纯静态站，点开即用。想把链接挂到自己的 GitHub 主页，见 [docs/04-github-pages.md](docs/04-github-pages.md)（含可直接粘贴的链接代码与发布步骤）。
+
 ## 快速开始
 
 ```bash
@@ -24,7 +30,8 @@ VLMTune/
 ├── docs/                          # 系统化知识文档（先读这里）
 │   ├── 01-architecture.md         # 架构知识点 + 核心公式速查
 │   ├── 02-finetuning.md           # 微调方法原理 + 逐行代码注解
-│   └── 03-data-pipeline.md        # 数据全流程 + 样例数据各阶段产物
+│   ├── 03-data-pipeline.md        # 数据全流程 + 样例数据各阶段产物
+│   └── 04-github-pages.md         # 静态站发布 + 主页链接接入说明
 ├── data/                          # 内置样例数据集
 │   ├── raw_corpus.jsonl           # 8 篇故意埋了脏数据的原始语料
 │   ├── sft_instruct.jsonl         # SFT 指令样本
@@ -36,13 +43,29 @@ VLMTune/
 │       ├── tokenizer.py           # 教学级 BPE 实现
 │       ├── finetuning.py          # LoRA 参数/显存精算 + 注意力计算
 │       └── training.py            # 训练过程模拟器
-└── frontend/                      # HTML + JS + Three.js 前端
-    ├── index.html
-    ├── css/style.css
-    ├── js/app.js                  # 交互逻辑
-    ├── js/visuals.js              # Three.js 3D 可视化
-    └── vendor/three.min.js        # 本地 Three.js（离线可用）
+├── frontend/                      # HTML + JS + Three.js 前端
+│   ├── index.html
+│   ├── css/style.css
+│   ├── js/app.js                  # 交互逻辑
+│   ├── js/visuals.js              # Three.js 3D 可视化
+│   └── vendor/three.min.js        # 本地 Three.js（离线可用）
+├── tools/                         # 静态站构建与校验
+│   ├── build_static.py            # 生成 site/
+│   ├── static-api.js              # 浏览器端算法（LoRA/训练/BPE）
+│   └── verify_static.py           # 前后端数值一致性校验
+├── site/                          # 生成的静态站（GitHub Pages 发布此目录）
+└── .github/workflows/deploy-pages.yml  # push 后自动发布
 ```
+
+## 静态站（GitHub Pages）工作流
+
+```bash
+python3 tools/build_static.py      # 预生成 API 数据 + 文档转 HTML + 装配前端
+python3 tools/verify_static.py     # 校验 JS 算法与 Python 后端数值一致
+cd site && python3 -m http.server 8000    # 本地预览静态版
+```
+
+`git push` 后 GitHub Actions 会自动重建并发布到 `https://pengyun1314123.github.io/VLMTune/`。原 Flask 开发方式不受影响。
 
 ## 前端交互页面
 
