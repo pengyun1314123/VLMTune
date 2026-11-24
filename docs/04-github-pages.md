@@ -16,33 +16,23 @@ GitHub Pages **只托管静态文件**（HTML / CSS / JS / 图片），不能在
 
 三篇 Markdown 文档也转成了带样式的 HTML（公式用 MathJax 渲染）。Three.js 3D 场景走本地文件，不依赖外网。
 
-## 二、上线步骤（只需做一次）
+## 二、实际发布方式（已完成）
 
-### 1. 开启 GitHub Pages（GitHub Actions 方式）
+**当前线上地址：https://pengyun1314123.github.io/VLMTune/**
 
-1. 打开 `https://github.com/pengyun1314123/VLMTune/settings/pages`
-2. **Build and deployment → Source** 选择 **GitHub Actions**
-3. 确认仓库里有 `.github/workflows/deploy-pages.yml`（本工程已自带）
+`VLMTune` 仓库是**私有仓库**，免费账户无法为它单独开启 GitHub Pages（直接访问会返回 503 Unicorn 页）。因此采用更稳妥的方案：**把 `site/` 的全部内容放到主页仓库 `pengyun1314123.github.io` 的 `/VLMTune/` 子目录下发布**。主页仓库是 public 且 Pages 正常，Jekyll 会把这些静态文件原样复制，路径和链接都不用改。
 
-### 2. 推送代码
+已完成的事情：
 
-```bash
-cd VLMTune
-git add .
-git commit -m "Add static GitHub Pages build"
-git push origin main
-```
+1. 主页 README.md 顶部导航加入「教学实验室」链接，并新增「交互教学实验室 · VLMTune」章节（六个板块表格 + 在线 / 源码入口）。
+2. 静态站文件已推送到主页仓库的 `VLMTune/` 目录。
+3. 线上验证：首页与 `api/*.json`、`js/*.js`、`css`、`vendor/three.min.js`、`docs/*.html` 全部返回 200。
 
-推送后进入仓库 **Actions** 标签页，可以看到 `Deploy VLMTune to GitHub Pages` 正在运行。跑完（约 1 分钟）后访问：
+> 仓库里的 `.github/workflows/deploy-pages.yml` 保留作备用：如果将来把 VLMTune 仓库转为 public，可在 Settings → Pages → Source 选 GitHub Actions 切回独立发布。
 
-**https://pengyun1314123.github.io/VLMTune/**
+### 如果要在别的主页加链接
 
-> 注意 URL 大小写：仓库名是 `VLMTune`，Pages 路径保留原样。
-> 以后每次 push 到主分支都会自动重新生成并发布，不用手动操作。
-
-### 3. 在主页加一个链接
-
-打开你的主页仓库 `pengyun1314123.github.io`，编辑 `index.html`，在合适的位置（比如项目列表里）加上：
+打开主页仓库，编辑 `README.md`（Jekyll 站）或 `index.html`，在合适的位置加上：
 
 **简洁文字版：**
 
@@ -75,23 +65,24 @@ git push origin main
 <a href="https://pengyun1314123.github.io/VLMTune/#finetune">微调游乐场</a>
 ```
 
-## 三、两种备选发布方式
+## 三、本地改了内容怎么更新（重要）
 
-如果不想用 Actions，也可以：
+后端算法或样例数据改动后，**一步重建并同步到线上**：
 
-- **分支方式**：把 `site/` 目录内容推到 `gh-pages` 分支，然后在 Settings → Pages → Source 选 `Deploy from a branch` / `gh-pages` / `/ (root)`。
-- **自定义域名**：在 Settings → Pages → Custom domain 填自己的域名，并在 DNS 加 CNAME 记录；本工程用的是相对路径，换域名不需要改代码。
+```bash
+python3 tools/publish_to_homepage.py
+```
 
-## 四、本地改了内容怎么更新
+这个脚本会依次：重建 `site/` → 跑 12 项一致性校验 → 把 `site/` 内容同步到主页仓库的 `VLMTune/` 目录 → 提交并推送主页仓库。约 1 分钟后线上生效。
 
-后端算法或样例数据有改动后，重新生成静态文件：
+也可以分步手动操作：
 
 ```bash
 python3 tools/build_static.py      # 重建 site/
 python3 tools/verify_static.py     # 校验浏览器端算法与后端一致
+cp -R site/. ../pengyun1314123.github.io/VLMTune/
+cd ../pengyun1314123.github.io && git add VLMTune && git commit -m "Update VLMTune" && git push
 ```
-
-然后 `git add . && git commit && git push`，Actions 会自动重新发布。
 
 只想本地预览静态效果：
 
@@ -106,9 +97,9 @@ cd site && python3 -m http.server 8000
 python3 backend/app.py    # http://127.0.0.1:5000
 ```
 
-## 五、常见问题
+## 四、常见问题
 
-**页面打开是空白？** 先确认 Settings → Pages 的 Source 是 GitHub Actions，且 Actions 最后一次运行成功；再看浏览器控制台有没有 404（通常是路径大小写问题）。
+**页面打开是空白？** 先看浏览器控制台有没有 404（通常是路径大小写问题），再确认主页仓库 `VLMTune/` 目录下的文件是最新的。
 
 **公式显示成 `$$...$$` 原文？** 文档页的公式依赖 jsDelivr 上的 MathJax；网络受限时会降级显示 LaTeX 源码，内容不丢。实验室页面里的公式是 HTML 写的，不受影响。
 

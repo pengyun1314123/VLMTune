@@ -4,9 +4,15 @@
 
 ## 在线体验（无需部署）
 
-**https://pengyun1314123.github.io/VLMTune/**
+**https://pengyun1314123.github.io/VLMTune/** — 已上线，主页也有入口。
 
-完整实验室已发布为纯静态站，点开即用。想把链接挂到自己的 GitHub 主页，见 [docs/04-github-pages.md](docs/04-github-pages.md)（含可直接粘贴的链接代码与发布步骤）。
+本站以主页仓库 `pengyun1314123.github.io` 的 `/VLMTune/` 子目录发布（VLMTune 仓库是私有的，无法单独开 Pages）。内容更新一键完成：
+
+```bash
+python3 tools/publish_to_homepage.py    # 重建 + 校验 + 同步 + 推送主页仓库
+```
+
+详见 [docs/04-github-pages.md](docs/04-github-pages.md)。
 
 ## 快速开始
 
@@ -52,16 +58,17 @@ VLMTune/
 ├── tools/                         # 静态站构建与校验
 │   ├── build_static.py            # 生成 site/
 │   ├── static-api.js              # 浏览器端算法（LoRA/训练/BPE）
-│   └── verify_static.py           # 前后端数值一致性校验
-├── site/                          # 生成的静态站（GitHub Pages 发布此目录）
-└── .github/workflows/deploy-pages.yml  # push 后自动发布
+│   ├── verify_static.py           # 前后端数值一致性校验
+│   └── publish_to_homepage.py     # 一键重建 + 同步 + 发布到主页
+└── site/                          # 生成的静态站（同步到主页仓库 /VLMTune/）
 ```
 
-## 静态站（GitHub Pages）工作流
+## 静态站工作流
 
 ```bash
 python3 tools/build_static.py      # 预生成 API 数据 + 文档转 HTML + 装配前端
 python3 tools/verify_static.py     # 校验 JS 算法与 Python 后端数值一致
+python3 tools/publish_to_homepage.py  # 一键：重建 + 校验 + 同步 + 推送上线
 cd site && python3 -m http.server 8000    # 本地预览静态版
 ```
 
