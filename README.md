@@ -66,8 +66,6 @@ python3 tools/publish_to_homepage.py  # 一键：重建 + 校验 + 同步 + 推�
 cd site && python3 -m http.server 8000    # 本地预览静态版
 ```
 
-`git push` 后 GitHub Actions 会自动重建并发布到 `https://pengyun1314123.github.io/VLMTune/`。原 Flask 开发方式不受影响。
-
 ## 前端交互页面
 
 | 页面 | 内容 |
