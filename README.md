@@ -30,8 +30,7 @@ VLMTune/
 ├── docs/                          # 系统化知识文档（先读这里）
 │   ├── 01-architecture.md         # 架构知识点 + 核心公式速查
 │   ├── 02-finetuning.md           # 微调方法原理 + 逐行代码注解
-│   ├── 03-data-pipeline.md        # 数据全流程 + 样例数据各阶段产物
-│   └── 04-github-pages.md         # 静态站发布 + 主页链接接入说明
+│   └── 03-data-pipeline.md        # 数据全流程 + 样例数据各阶段产物
 ├── data/                          # 内置样例数据集
 │   ├── raw_corpus.jsonl           # 8 篇故意埋了脏数据的原始语料
 │   ├── sft_instruct.jsonl         # SFT 指令样本
