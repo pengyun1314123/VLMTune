@@ -8,14 +8,6 @@
 >
 > 无需安装、无需启动后端，点开链接即可完整体验所有交互演示。喜欢的话欢迎点进 [GitHub 仓库](https://github.com/pengyun1314123/VLMTune/) 点个 Star ⭐ 跟踪后续更新。
 
-本站已发布为纯静态站点，个人主页也有入口。内容更新一键完成：
-
-```bash
-python3 tools/publish_to_homepage.py    # 重建 + 校验 + 同步 + 推送主页仓库
-```
-
-详见 [docs/04-github-pages.md](docs/04-github-pages.md)。
-
 ## 快速开始
 
 ```bash
