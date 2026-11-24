@@ -208,3 +208,119 @@ input[type=text]:focus{outline:none;border-color:var(--cyan)}
 .roadmap b{color:var(--text)}
 .loading{color:var(--muted);padding:20px;text-align:center}
 @media(max-width:1100px){.card-grid,.concept-grid,.doc-grid{grid-template-columns:1fr 1fr}.hero{flex-direction:column}.hero-canvas-wrap{width:100%}.split{flex-direction:column}.three-wrap{width:100%;min-height:280px;border-right:0;border-bottom:1px solid var(--border)}.metric-grid{grid-template-columns:1fr 1fr}}
+/* ---------- MOBILE (<=768px)：侧边栏置顶，主内容单列垂直流 ---------- */
+@media(max-width:768px){
+  /* 整体：左右布局 -> 上下布局 */
+  .app{flex-direction:column;height:100vh;height:100dvh}
+  body{overflow:hidden}
+  /* 侧边栏 -> 顶部横向导航（无需 JS，沿用 .nav-item 点击逻辑） */
+  .sidebar{width:100%;flex:0 0 auto;height:auto;padding:10px 14px 8px;border-right:0;border-bottom:1px solid var(--border);gap:9px}
+  .brand{margin-bottom:0;padding:0 2px;gap:9px}
+  .brand-mark{width:30px;height:30px;border-radius:9px;font-size:16px}
+  .brand-title{font-size:15px}
+  .brand-sub{font-size:10px}
+  .nav{flex:0 0 auto;flex-direction:row;gap:6px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav-group-label,.star-card,.sidebar-foot{display:none}
+  .nav-item{flex:0 0 auto;white-space:nowrap;gap:6px;padding:7px 11px;font-size:12.5px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);scroll-snap-align:start}
+  .nav-item.active{border-color:rgba(34,211,238,.5);box-shadow:none;background:linear-gradient(90deg,rgba(34,211,238,.18),rgba(167,139,250,.10))}
+  .ni{font-size:14px;width:auto}
+  /* 顶栏与页面留白 */
+  .topbar{height:46px;padding:0 16px}
+  .topbar-right{display:none}
+  .crumb{font-size:12.5px}
+  .page{padding:20px 16px 56px}
+  .page-head{margin-bottom:20px}
+  .page-head h1{font-size:23px}
+  .page-head p{font-size:12.5px}
+  .section-title{margin-bottom:14px}
+  .section-title h2{font-size:17px}
+  /* Hero */
+  .hero{gap:20px;min-height:0;margin-bottom:30px}
+  .hero-text{flex:0 0 auto;width:100%}
+  .hero-badge{font-size:9px;margin-bottom:12px}
+  .hero h1{font-size:32px;letter-spacing:-.5px}
+  .hero-lead{font-size:13.5px;margin:14px 0 18px}
+  .hero-actions{flex-direction:column;gap:10px}
+  .hero-actions .btn{width:100%;min-width:0;padding:11px 12px}
+  .hero-stats{gap:16px;margin-top:22px;flex-wrap:wrap}
+  .hero-stats b{font-size:20px}
+  .hero-stats span{font-size:10px}
+  .hero-canvas-wrap{width:100%;min-width:0;height:240px}
+  .canvas-caption{font-size:9px;bottom:8px;left:10px}
+  /* 卡片网格单列 */
+  .card-grid,.concept-grid,.doc-grid{grid-template-columns:1fr;gap:12px;margin-bottom:30px}
+  .lp-card,.concept-card,.doc-card{padding:16px}
+  .cc-formula{font-size:11px;overflow-wrap:anywhere}
+  /* 面板 / 3D */
+  .panel{margin-bottom:14px;border-radius:12px}
+  .panel-head{padding:12px 14px;flex-wrap:wrap;gap:2px 10px}
+  .panel-head h3{font-size:13.5px}
+  .hint{font-size:10px}
+  .panel-body{padding:14px}
+  .three-wrap{width:100%;min-height:240px}
+  .flow-item{gap:10px}
+  .flow-item b{font-size:12.5px}
+  .flow-item p{font-size:11px;overflow-wrap:anywhere}
+  .formula-box{font-size:11.5px;padding:12px 9px;overflow-x:auto}
+  /* 热力图：内容宽时不撑破页面，可横向滑动 */
+  .heatmap{max-width:100%;overflow-x:auto;padding-bottom:8px}
+  .cap{font-size:10.5px}
+  /* 分词 */
+  .input-row{gap:8px}
+  input[type=text]{padding:9px 11px;font-size:13px;min-width:0}
+  .input-row .btn{flex:0 0 auto}
+  .tok{font-size:11px;padding:4px 7px}
+  /* 流水线 */
+  .stage-detail{grid-template-columns:1fr;gap:10px}
+  .sd-block{padding:12px}
+  .sd-val{font-size:12px;overflow-wrap:anywhere}
+  .sample-box{font-size:10.5px;max-height:180px}
+  .stat-pill{font-size:10px;padding:3px 8px}
+  .tabs{flex-wrap:wrap;gap:5px}
+  .tab{padding:6px 10px;font-size:11px}
+  .sft-item{padding:10px}
+  .sd-tip{font-size:11px;padding:9px 10px}
+  /* LoRA 计算 */
+  .slider-grid{grid-template-columns:1fr;gap:12px;margin-bottom:16px}
+  .slider-grid label{justify-content:space-between;gap:8px;font-size:11.5px}
+  .slider-grid input[type=range]{min-width:0}
+  .slider-grid output{width:44px;flex:0 0 auto}
+  .metric-grid{gap:8px;margin-bottom:14px}
+  .metric{padding:11px}
+  .metric b{font-size:17px}
+  .metric span{font-size:9.5px}
+  .bar-row{gap:7px}
+  .bar-label{width:66px;font-size:10px}
+  .bar-track{height:18px}
+  /* 方法表格：横向滚动，避免 6 列挤成一团 */
+  #methodsTable{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  #methodsTable .method-table{min-width:660px;font-size:11.5px}
+  .method-table th,.method-table td{padding:8px 9px}
+  /* 代码 / 模拟器 */
+  .code-block{font-size:11px;padding:14px;line-height:1.8}
+  .sim-controls{gap:10px;align-items:flex-start}
+  .sim-controls label{font-size:11px}
+  .sim-controls select{padding:5px 8px;font-size:11px}
+  .chart-canvas{height:190px}
+  .legend{gap:12px;font-size:10px}
+  .sim-result{font-size:11.5px;padding:10px}
+  .ck{font-size:9.5px;padding:3px 7px}
+  /* 多模态：流程改垂直，箭头朝下 */
+  .mm-flow{gap:18px}
+  .mm-step{flex:1 1 100%;min-width:0;margin:0}
+  .mm-step::after{content:'↓';right:auto;left:50%;top:auto;bottom:-17px;transform:translateX(-50%);font-size:16px}
+  .two-stage{flex-direction:column;gap:10px}
+  .ts-card{width:100%;padding:14px}
+  .ts-arrow{transform:rotate(90deg);font-size:22px;line-height:1}
+  /* 学习路线单列 */
+  .roadmap{columns:1;padding-left:18px}
+  .roadmap li{font-size:12px}
+}
+/* ---------- 超小屏（<=380px） ---------- */
+@media(max-width:380px){
+  .hero h1{font-size:28px}
+  .hero-actions .btn{min-width:0;font-size:12px}
+  .hero-stats{gap:12px}
+  .brand-sub{display:none}
+}
