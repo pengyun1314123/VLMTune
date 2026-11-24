@@ -157,7 +157,7 @@
 
 ### ⑫ 评估（Perplexity）
 
-$$PPL = \exp\!\left(-\frac{1}{T}\sum_{t=1}^{T}\log P_\theta(x_t\mid x_{<t})\right)$$
+$$PPL = \exp\!\left(-\frac{1}{T}\sum_{t=1}^{T}\log P_\theta(x_t\mid x_{\lt t})\right)$$
 
 - **输入**：留出集（held-out）
 - **产物**：loss 曲线、PPL 数值、下游任务指标

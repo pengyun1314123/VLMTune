@@ -103,4 +103,6 @@ python3 backend/app.py    # http://127.0.0.1:5000
 
 **公式显示成 `$$...$$` 原文？** 文档页的公式依赖 jsDelivr 上的 MathJax；网络受限时会降级显示 LaTeX 源码，内容不丢。实验室页面里的公式是 HTML 写的，不受影响。
 
+**GitHub 上公式报 "Extra open brace or missing close brace"？** 公式里写了裸 `<`（如 `x_{<t}`），Markdown 会把它当成 HTML 标签开头吞掉后面的内容，导致花括号不配对。改用 LaTeX 的 `\lt`：写成 `x_{\lt t}`，渲染结果相同且各平台都安全。
+
 **数字和本地 Flask 版不一样？** 正常情况应完全一致（已校验 12 项）。如发现偏差，先跑 `python3 tools/verify_static.py`。训练模拟的随机数用 MT19937 逐位复刻，Loss 曲线数值与后端相同。

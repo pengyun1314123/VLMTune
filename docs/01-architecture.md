@@ -35,11 +35,11 @@
 
 给定一段 token 序列 `x = (x₁, x₂, …, x_T)`，模型把联合概率链式分解：
 
-$$P(x) = \prod_{t=1}^{T} P_\theta(x_t \mid x_{<t})$$
+$$P(x) = \prod_{t=1}^{T} P_\theta(x_t \mid x_{\lt t})$$
 
 训练目标 = 最大化训练语料的对数似然（等价于最小化交叉熵）：
 
-$$\mathcal{L}_{\text{CLM}} = -\sum_{t=1}^{T} \log P_\theta(x_t \mid x_{<t})$$
+$$\mathcal{L}_{\text{CLM}} = -\sum_{t=1}^{T} \log P_\theta(x_t \mid x_{\lt t})$$
 
 **人话**：第 t 个位置只看它前面的词，预测自己。一句话里每个词都能产生一个训练信号，所以一本 1T token 的语料就有 1T 个"练习题"。
 
@@ -160,7 +160,7 @@ $$H_v = \text{MLP}(V) \in \mathbb{R}^{N \times d_l}$$
 
 与文本相同，仍是自回归交叉熵，只是序列中含有图像 token（这些位置通常不计算 loss，只对文本回答部分计算）：
 
-$$\mathcal{L} = -\sum_{t \in \text{文本回答位置}} \log P_\theta(y_t \mid y_{<t}, H_v, x_{\text{instr}})$$
+$$\mathcal{L} = -\sum_{t \in \text{文本回答位置}} \log P_\theta(y_t \mid y_{\lt t}, H_v, x_{\text{instr}})$$
 
 ---
 
@@ -168,8 +168,8 @@ $$\mathcal{L} = -\sum_{t \in \text{文本回答位置}} \log P_\theta(y_t \mid y
 
 | 主题 | 公式 | 一句话 |
 |---|---|---|
-| 语言建模 | $P(x)=\prod_t P(x_t\mid x_{<t})$ | 预测下一个词 |
-| 预训练损失 | $\mathcal{L}=-\sum_t \log P_\theta(x_t\mid x_{<t})$ | 交叉熵 |
+| 语言建模 | $P(x)=\prod_t P(x_t\mid x_{\lt t})$ | 预测下一个词 |
+| 预训练损失 | $\mathcal{L}=-\sum_t \log P_\theta(x_t\mid x_{\lt t})$ | 交叉熵 |
 | 注意力 | $\text{softmax}(QK^\top/\sqrt{d_k}+M)V$ | 相关性加权汇总 |
 | 多头 | $\text{Concat}(\text{head}_i)W^O$ | 多子空间并行 |
 | RoPE | $x_m e^{im\theta}$ | 位置=旋转角 |
