@@ -190,7 +190,7 @@ async function updateLoRA() {
       <div class="metric"><b>${d.single_layer.compression_ratio}×</b><span>单层压缩比</span></div>
       <div class="metric"><b>${d.whole_model.trainable_percent}%</b><span>整模型可训练占比</span></div>`;
     const mem = d.memory_gb, max = Math.max(...Object.values(mem));
-    const bar = (label, val, cls) => `<div class="bar-row"><span class="bar-label">${label}</span><div class="bar-track"><div class="bar-fill ${cls}" style="width:${(val / max * 100).toFixed(1)}%">${val} GB</div></div></div>`;
+    const bar = (label, val, cls) => `<div class="bar-row"><span class="bar-label">${label}</span><div class="bar-track"><div class="bar-fill ${cls}" style="width:${(val / max * 100).toFixed(1)}%"></div></div><span class="bar-value">${val} GB</span></div>`;
     $('#memChart').innerHTML = bar('全量微调', mem.full_finetune, 'bar-full') + bar('LoRA', mem.lora, 'bar-lora') + bar('QLoRA', mem.qlora, 'bar-qlora');
     $('#loraNote').textContent = d.note + ` 若用 7B 级配置：全量需 ${mem.full_finetune}GB、LoRA ${mem.lora}GB、QLoRA 仅 ${mem.qlora}GB（含权重+梯度+优化器状态估算）。`;
   } catch (e) { console.error(e); }
