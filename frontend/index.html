@@ -24,6 +24,7 @@
       <a class="nav-item" data-section="multimodal"><span class="ni">▣</span> 多模态世界</a>
       <div class="nav-group-label">资源</div>
       <a class="nav-item" data-section="docs"><span class="ni">▤</span> 知识文档</a>
+      <a class="nav-item nav-external" href="compression.html"><span class="ni">◧</span> 模型压缩实验室 ↗</a>
     </nav>
     <a class="star-card" href="https://github.com/pengyun1314123/VLMTune" target="_blank" rel="noopener">
       <div class="sc-top"><span class="sc-star">★</span> 持续更新中</div>
@@ -226,6 +227,13 @@ self.B = nn.Parameter(torch.zeros(d, r))
     <section class="page" id="page-docs">
       <div class="page-head"><h1>知识文档</h1><p>配合交互页面阅读的系统化文档，含全部核心公式与代码注解。</p></div>
       <div class="doc-grid" id="docGrid"></div>
+      <div class="panel">
+        <div class="panel-head"><h3>▢ 进阶专题：剪枝 / 量化 / 全栈推理加速</h3><span class="hint">独立教学页 · 新窗口打开</span></div>
+        <div class="panel-body">
+          <p style="color:var(--muted);margin-bottom:14px">从矩阵位宽到结构变化，完整拆解剪枝与量化的每一步操作；覆盖 Qwen3 / DeepSeek、FLUX.1、Wan2.2、Hunyuan3D 2.1 四类开源模型的最佳实践流水线，以及蒸馏、投机解码、KV Cache、Token 剪枝等 12 种优化手段。</p>
+          <a class="btn primary" href="compression.html" target="_blank" rel="noopener">打开模型压缩实验室 ↗</a>
+        </div>
+      </div>
       <div class="panel">
         <div class="panel-head"><h3>小白学习路线（建议顺序）</h3></div>
         <div class="panel-body"><ol class="roadmap">

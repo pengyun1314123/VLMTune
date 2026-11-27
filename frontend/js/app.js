@@ -23,7 +23,10 @@ window.addEventListener('hashchange', () => {
   const n = location.hash.replace('#', '');
   if (SECTION_NAMES[n]) goto(n, true);
 });
-$$('.nav-item').forEach(n => n.addEventListener('click', () => goto(n.dataset.section)));
+$$('.nav-item').forEach(n => {
+  // 外链型导航项（例如模型压缩实验室）交给浏览器跳转，不参与页面内切换
+  if (n.dataset.section) n.addEventListener('click', () => goto(n.dataset.section));
+});
 $$('[data-goto]').forEach(b => b.addEventListener('click', () => goto(b.dataset.goto)));
 const initialSection = location.hash.replace('#', '');
 if (SECTION_NAMES[initialSection]) goto(initialSection, true);

@@ -384,7 +384,7 @@ ORIGINAL_GET = """async function get(path) {
 def build_frontend():
     print("[3/5] 装配静态前端 ...")
     # 静态资源
-    for rel in ["index.html", "css/style.css", "js/visuals.js", "js/app.js",
+    for rel in ["index.html", "compression.html", "css/style.css", "js/visuals.js", "js/app.js",
                 "vendor/three.min.js"]:
         src = os.path.join(FRONTEND, rel.replace("/", os.sep))
         dst = os.path.join(SITE, rel.replace("/", os.sep))

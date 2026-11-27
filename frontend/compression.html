@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>模型压缩实验室 · 剪枝 / 量化 / 全栈加速 · VLMTune</title>
+<style>
+:root{
+  --bg:#0a0e17;--bg2:#0d1220;--panel:#121a2b;--panel2:#162033;--panel3:#1b2740;
+  --border:#243049;--border-hi:#33456b;--text:#e6edf7;--muted:#8a99b5;--dim:#5b6b8c;
+  --cyan:#22d3ee;--violet:#a78bfa;--green:#34d399;--amber:#fbbf24;--rose:#fb7185;--blue:#60a5fa;
+  --mono:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;font-size:14px;line-height:1.75}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+.app{display:flex;min-height:100vh}
+/* ---------- SIDEBAR ---------- */
+.sidebar{width:244px;flex:0 0 244px;background:var(--bg2);border-right:1px solid var(--border);padding:22px 14px 30px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:6px}.sidebar::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:3px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px 18px;border-bottom:1px solid var(--border)}
+.brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--cyan),var(--violet));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:19px;color:#07101f;box-shadow:0 4px 18px rgba(34,211,238,.25)}
+.brand-title{font-size:16px;font-weight:700}.brand-sub{font-size:10.5px;color:var(--muted)}
+.back-link{display:block;margin:16px 6px 8px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:12px;transition:.18s}
+.back-link:hover{border-color:var(--cyan);color:var(--cyan);text-decoration:none;background:rgba(34,211,238,.06)}
+.nav-group-label{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin:18px 10px 7px}
+.toc{display:flex;flex-direction:column;gap:2px}
+.toc a{display:flex;gap:9px;align-items:baseline;padding:7px 10px;border-radius:8px;color:var(--muted);font-size:12.5px;transition:.16s;text-decoration:none}
+.toc a:hover{background:var(--panel);color:var(--text)}
+.toc a.active{background:linear-gradient(90deg,rgba(34,211,238,.14),rgba(167,139,250,.06));color:#fff;box-shadow:inset 2px 0 0 var(--cyan)}
+.toc .tn{font-family:var(--mono);font-size:10px;color:var(--dim);width:18px;flex:0 0 18px}
+.toc a.active .tn{color:var(--cyan)}
+.side-foot{margin-top:22px;padding:12px 10px 0;border-top:1px solid var(--border);font-size:10.5px;color:var(--dim);line-height:1.6}
+/* ---------- MAIN ---------- */
+.main{flex:1;min-width:0}
+.topbar{position:sticky;top:0;z-index:20;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 38px;border-bottom:1px solid var(--border);background:rgba(10,14,23,.9);backdrop-filter:blur(10px)}
+.crumb{font-size:12px;color:var(--muted);font-weight:600}.crumb b{color:var(--text)}
+.top-tags{display:flex;gap:7px}.tag{font-size:9.5px;padding:4px 10px;border:1px solid var(--border);border-radius:20px;color:var(--muted);font-family:var(--mono)}
+.wrap{max-width:1180px;margin:0 auto;padding:0 38px 90px}
+/* ---------- HERO ---------- */
+.hero{margin:34px 0 30px;padding:34px 36px;border:1px solid var(--border-hi);border-radius:18px;background:radial-gradient(900px 340px at 85% 0%,rgba(167,139,250,.16),transparent 60%),radial-gradient(700px 300px at 10% 100%,rgba(34,211,238,.12),transparent 60%),var(--panel);position:relative;overflow:hidden}
+.hero:after{content:'';position:absolute;right:-70px;bottom:-130px;width:360px;height:360px;border:1px solid rgba(34,211,238,.13);border-radius:50%;box-shadow:0 0 0 50px rgba(34,211,238,.025),0 0 0 100px rgba(167,139,250,.02);pointer-events:none}
+.hero-badge{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);border:1px solid rgba(34,211,238,.3);padding:4px 12px;border-radius:20px;margin-bottom:16px}
+.hero h1{font-size:34px;line-height:1.28;letter-spacing:.4px}
+.hero h1 .grad{background:linear-gradient(90deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-lead{max-width:800px;color:#b9c7df;margin-top:14px;font-size:14.5px}
+.hero-stats{display:flex;flex-wrap:wrap;gap:30px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+.hero-stats b{font-size:22px;color:var(--cyan);font-family:var(--mono)}.hero-stats span{display:block;font-size:11px;color:var(--muted)}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.btn{display:inline-block;padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--border-hi);background:var(--panel2);color:var(--text);transition:.18s;text-decoration:none}
+.btn:hover{transform:translateY(-1px);text-decoration:none}
+.btn.primary{background:linear-gradient(135deg,var(--cyan),#5eead4);color:#07101f;border-color:transparent}
+.btn.ghost:hover{border-color:var(--cyan)}
+/* ---------- SECTIONS ---------- */
+.sec{scroll-margin-top:70px;margin:0 0 62px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:22px}
+.sec-num{font-family:var(--mono);font-size:12px;color:var(--cyan);border:1px solid rgba(34,211,238,.3);padding:3px 9px;border-radius:6px;flex:0 0 auto}
+.sec-head h2{font-size:24px;letter-spacing:.3px}
+.sec-head .sub{color:var(--muted);font-size:12.5px;margin-left:auto;text-align:right}
+h3{font-size:17px;margin:26px 0 12px;color:#fff}
+h4{font-size:14.5px;margin:18px 0 9px;color:#e8f0ff}
+p{margin:9px 0;color:#c4d1e6}
+ul,ol{margin:9px 0 9px 20px;color:#c4d1e6}li{margin:5px 0}
+code{font-family:var(--mono);font-size:12.2px;background:rgba(34,211,238,.08);color:#8ee6f7;padding:1px 5px;border-radius:4px}
+strong{color:#fff;font-weight:650}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:13px;margin:16px 0;overflow:hidden}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);background:var(--panel2)}
+.panel-head h3{margin:0;font-size:14px}
+.panel-head .hint{font-size:10.5px;color:var(--muted);font-family:var(--mono)}
+.panel-body{padding:17px 19px}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 17px}
+.card h4{margin-top:0}.card p{font-size:12.8px}
+.card.cyan{border-top:2px solid var(--cyan)}.card.violet{border-top:2px solid var(--violet)}.card.green{border-top:2px solid var(--green)}.card.amber{border-top:2px solid var(--amber)}.card.rose{border-top:2px solid var(--rose)}.card.blue{border-top:2px solid var(--blue)}
+.kicker{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--cyan);margin-bottom:7px}
+.note{border-left:3px solid var(--cyan);background:rgba(34,211,238,.06);padding:11px 15px;border-radius:0 9px 9px 0;margin:14px 0;font-size:12.8px;color:#c6d9ee}
+.warn{border-left:3px solid var(--amber);background:rgba(251,191,36,.07);padding:11px 15px;border-radius:0 9px 9px 0;margin:14px 0;font-size:12.8px;color:#f0dfb8}
+.danger{border-left:3px solid var(--rose);background:rgba(251,113,133,.07);padding:11px 15px;border-radius:0 9px 9px 0;margin:14px 0;font-size:12.8px;color:#f5c9d0}
+.formula{font-family:var(--mono);background:linear-gradient(90deg,rgba(167,139,250,.1),rgba(34,211,238,.04));border:1px solid rgba(167,139,250,.22);border-radius:9px;padding:12px 16px;margin:12px 0;color:#e5d9ff;font-size:13px;overflow-x:auto;white-space:nowrap}
+.formula .cm{color:var(--muted)}
+/* ---------- TABLE ---------- */
+.table-wrap{overflow-x:auto;margin:14px 0;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:12.4px;min-width:620px}
+th{background:var(--panel2);color:#fff;text-align:left;padding:10px 13px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border-hi)}
+td{padding:9px 13px;border-bottom:1px solid rgba(36,48,73,.6);color:#c7d3e8;vertical-align:top}
+tr:last-child td{border-bottom:none}tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+td code{white-space:nowrap}
+.pill{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-family:var(--mono);border:1px solid var(--border-hi);color:var(--muted)}
+.pill.g{color:var(--green);border-color:rgba(52,211,153,.35)}.pill.r{color:var(--rose);border-color:rgba(251,113,133,.35)}.pill.a{color:var(--amber);border-color:rgba(251,191,36,.35)}.pill.b{color:var(--blue);border-color:rgba(96,165,250,.35)}
+/* ---------- STEPS ---------- */
+.steps{display:flex;flex-direction:column;gap:10px;counter-reset:st}
+.step{display:flex;gap:14px;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:14px 16px}
+.step-n{flex:0 0 28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(34,211,238,.2),rgba(167,139,250,.2));border:1px solid rgba(34,211,238,.35);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--cyan);font-weight:700}
+.step-b{flex:1;min-width:0}.step-b h4{margin:1px 0 5px;font-size:13.5px}.step-b p{font-size:12.6px;margin:4px 0}
+.step-b ul{font-size:12.5px;margin:6px 0 4px 18px}
+.step-b .stage-out{margin-top:8px;font-size:11.5px;color:var(--green);font-family:var(--mono)}
+/* ---------- CODE ---------- */
+.code-block{position:relative;background:#0b1120;border:1px solid var(--border);border-radius:10px;margin:12px 0;overflow:hidden}
+.code-top{display:flex;justify-content:space-between;align-items:center;padding:7px 13px;border-bottom:1px solid var(--border);background:var(--panel2);font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.copy-btn{border:1px solid var(--border-hi);background:transparent;color:var(--muted);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:10px;font-family:var(--mono)}
+.copy-btn:hover{color:var(--cyan);border-color:var(--cyan)}
+pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:11.8px;line-height:1.7;color:#b9c9e6}
+pre .k{color:#c4b5fd}pre .s{color:#86efac}pre .c{color:#64748b}pre .f{color:#7dd3fc}pre .n{color:#fcd34d}
+/* ---------- SVG / FLOW ---------- */
+.figure{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0}
+.figure .cap{font-size:11px;color:var(--muted);margin-top:10px;text-align:center}
+.figure svg{width:100%;height:auto;display:block}
+.flowline{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:14px 0}
+.flownode{flex:1;min-width:130px;background:var(--panel2);border:1px solid var(--border-hi);border-radius:10px;padding:11px 12px;font-size:11.5px;color:#cbd8ef}
+.flownode b{display:block;color:#fff;font-size:12px;margin-bottom:4px}
+.flownode .fo{color:var(--cyan);font-family:var(--mono);font-size:10px}
+.flowarrow{align-self:center;color:var(--cyan);font-size:17px}
+/* ---------- INTERACTIVE ---------- */
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.sliders label{display:block;font-size:12px;color:var(--muted);margin:12px 0 2px}
+.sliders input[type=range]{width:100%;accent-color:var(--cyan)}
+.sliders output{font-family:var(--mono);color:var(--cyan);font-size:12px;float:right}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.metric{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:11px 13px}
+.metric b{display:block;font-family:var(--mono);font-size:19px;color:var(--cyan)}
+.metric span{font-size:10.5px;color:var(--muted)}
+.bar-row{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:10.5px;color:var(--muted)}
+.bar-row .bar{flex:1;height:10px;border-radius:5px;background:var(--panel3);overflow:hidden}
+.bar-row .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--violet))}
+.bar-row em{font-family:var(--mono);font-style:normal;color:var(--text);width:78px;text-align:right}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{border:1px solid var(--border);background:var(--panel2);color:var(--muted);padding:6px 13px;border-radius:8px;font-size:11.5px;cursor:pointer}
+.tab.active{border-color:var(--cyan);color:var(--cyan);background:rgba(34,211,238,.09)}
+.tabpane{display:none}.tabpane.active{display:block}
+details{background:var(--panel);border:1px solid var(--border);border-radius:10px;margin:9px 0;padding:10px 15px}
+summary{cursor:pointer;font-size:13px;color:#e6edf7;font-weight:600}
+details[open] summary{margin-bottom:9px;color:var(--cyan)}
+.src{font-size:11.5px;color:var(--muted);word-break:break-all}
+.src a{color:var(--blue)}
+.footer{border-top:1px solid var(--border);padding-top:20px;color:var(--dim);font-size:11.5px}
+@media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(2,1fr)}.calc-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.app{display:block}.sidebar{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--border)}.toc{display:grid;grid-template-columns:repeat(2,1fr)}.topbar{padding:0 18px}.wrap{padding:0 18px 60px}.hero{padding:24px 20px}.hero h1{font-size:26px}.g2,.g3,.g4{grid-template-columns:1fr}.sec-head{flex-wrap:wrap}.sec-head .sub{margin-left:0;text-align:left;width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">V</div><div><div class="brand-title">VLMTune</div><div class="brand-sub">模型压缩 · 教学实验室</div></div></div>
+  <a class="back-link" href="index.html">← 返回主实验室</a>
+  <div class="nav-group-label">原理</div>
+  <nav class="toc" id="toc">
+    <a href="#s0"><span class="tn">00</span>先建立心智模型</a>
+    <a href="#s1"><span class="tn">01</span>剪枝：从矩阵到结构</a>
+    <a href="#s2"><span class="tn">02</span>量化：从浮点到整数</a>
+    <a href="#s3"><span class="tn">03</span>组合顺序与验收</a>
+    <div class="nav-group-label">四类模型的实战</div>
+    <a href="#s4"><span class="tn">04</span>大语言模型 · Qwen3 / DeepSeek</a>
+    <a href="#s5"><span class="tn">05</span>生图模型 · FLUX.1</a>
+    <a href="#s6"><span class="tn">06</span>生视频模型 · Wan2.2</a>
+    <a href="#s7"><span class="tn">07</span>生3D模型 · Hunyuan3D 2.1</a>
+    <div class="nav-group-label">扩展</div>
+    <a href="#s8"><span class="tn">08</span>其他优化手段全清单</a>
+    <a href="#s9"><span class="tn">09</span>选型 / 评测 / 避坑</a>
+    <a href="#s10"><span class="tn">10</span>资料来源与版本说明</a>
+  </nav>
+  <div class="side-foot">数据依据：各项目官方 README / 论文<br>整理时间：2026-11 · 参数以仓库为准</div>
+</aside>
+
+<main class="main">
+  <div class="topbar"><div class="crumb">VLMTune / <b>模型压缩实验室</b></div><div class="top-tags"><span class="tag">PRUNING</span><span class="tag">QUANTIZATION</span><span class="tag">4 MODALITIES</span></div></div>
+  <div class="wrap">
+
+  <div class="hero">
+    <div class="hero-badge">FROM 140 GB TO 35 GB · AND BEYOND</div>
+    <h1>剪枝与量化：<span class="grad">把大模型塞进现实</span>的完整工程手册</h1>
+    <p class="hero-lead">这里不只讲概念。每一节都按「改什么 → 数学怎么做 → 结构怎么变 → 一步一步怎么执行 → 怎么验收」展开，并给出大语言模型、文生图、文生视频、文生 3D 四类开源模型的当前最佳实践流水线。所有命令与数字来自对应项目官方仓库/论文，示例命令中的路径请按你的环境替换。</p>
+    <div class="hero-stats">
+      <div><b>2</b><span>核心压缩手段（剪枝 / 量化）</span></div>
+      <div><b>7+7</b><span>剪枝 / 量化算法逐条拆解</span></div>
+      <div><b>4</b><span>模态最佳流水线</span></div>
+      <div><b>12</b><span>其他加速手段</span></div>
+    </div>
+    <div class="hero-actions"><a class="btn primary" href="#s1">▶ 从剪枝开始</a><a class="btn ghost" href="#s4">直接看实战流程 ↗</a><a class="btn ghost" href="#s9">先看选型表</a></div>
+  </div>
+
+  <!-- ==================== 00 ==================== -->
+  <section class="sec" id="s0">
+    <div class="sec-head"><span class="sec-num">00</span><h2>先建立心智模型：到底在压缩什么</h2><span class="sub">四个问题决定后面所有选择</span></div>
+    <div class="grid g4">
+      <div class="card cyan"><div class="kicker">Q1 / OBJECT</div><h4>压缩对象</h4><p>权重 W、激活 A、KV Cache、梯度/优化器状态、输入 token 数、去噪步数、网络层数。剪枝偏「删结构」，量化偏「降精度」。</p></div>
+      <div class="card violet"><div class="kicker">Q2 / WHEN</div><h4>压缩时机</h4><p>PTQ（训练后，小时级，无需训练数据标签）、QAT（训练中感知量化）、蒸馏（教师带学生）、结构化剪枝后必须做恢复训练。</p></div>
+      <div class="card green"><div class="kicker">Q3 / GAIN</div><h4>收益来源</h4><p>显存 = 参数量 × 位宽 ÷ 8；带宽与缓存决定 decode 吞吐；算力决定 prefill / 扩散去噪。压缩不一定等于加速，取决于内核是否支持。</p></div>
+      <div class="card amber"><div class="kicker">Q4 / COST</div><h4>代价</h4><p>精度、泛化、长尾任务、时序一致性、硬件门槛。压缩后必须用同一套评测集做 A/B，不能只看文件变小。</p></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>显存账本：真实算术（拖动滑块，实时计算）</h3><span class="hint">权重 + KV Cache · 与后端实现无关的理论值</span></div>
+      <div class="panel-body calc-grid">
+        <div class="sliders">
+          <label>模型参数量 <output id="oP">70</output> B<input type="range" id="iP" min="1" max="235" step="1" value="70"></label>
+          <label>权重量化位宽 <output id="oB">4</output> bit<input type="range" id="iB" min="2" max="16" step="1" value="4"></label>
+          <label>并发序列数 <output id="oC">4</output><input type="range" id="iC" min="1" max="32" step="1" value="4"></label>
+          <label>上下文长度 <output id="oT">8192</output> tokens<input type="range" id="iT" min="512" max="65536" step="512" value="8192"></label>
+          <label>层数 <output id="oL">80</output><input type="range" id="iL" min="12" max="96" step="1" value="80"></label>
+          <label>KV 头数 × 头维度 <output id="oH">8×128</output><input type="range" id="iH" min="1" max="16" step="1" value="8"></label>
+          <label>KV Cache 位宽 <output id="oK">16</output> bit<input type="range" id="iK" min="4" max="16" step="4" value="16"></label>
+        </div>
+        <div>
+          <div class="metrics">
+            <div class="metric"><b id="mW">—</b><span>权重显存（GB）</span></div>
+            <div class="metric"><b id="mK">—</b><span>KV Cache（GB）</span></div>
+            <div class="metric"><b id="mT">—</b><span>合计（GB，不含激活/框架开销）</span></div>
+            <div class="metric"><b id="mS">—</b><span>相对 BF16 权重节省</span></div>
+          </div>
+          <div class="bar-row"><span>BF16</span><div class="bar"><i id="bar1" style="width:100%"></i></div><em id="val1"></em></div>
+          <div class="bar-row"><span>当前</span><div class="bar"><i id="bar2" style="width:25%"></i></div><em id="val2"></em></div>
+          <p style="font-size:11.5px;color:var(--muted);margin-top:12px">公式：权重 = P × bit / 8 / 1024³；KV = 2 × 层数 × 序列数 × token 数 × KV头数 × 头维 × bit / 8 / 1024³（2 = K 与 V）。实际部署还要加激活、CUDA context、临时 buffer，通常再留 10%–25% 余量。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="figure">
+      <svg viewBox="0 0 1080 220" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="g0" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+        <text x="24" y="30" fill="#e6edf7" font-size="14" font-weight="700">一个模型的六层可压缩对象</text>
+        <g font-size="11" fill="#c4d1e6">
+          <rect x="24" y="52" width="160" height="56" rx="9" fill="#121a2b" stroke="#22d3ee"/><text x="104" y="76" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">权重 W</text><text x="104" y="95" text-anchor="middle">INT4 / FP8 / 2:4 / 通道删除</text>
+          <rect x="204" y="52" width="160" height="56" rx="9" fill="#121a2b" stroke="#a78bfa"/><text x="284" y="76" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">激活 A</text><text x="284" y="95" text-anchor="middle">W8A8 / SmoothQuant / token 剪枝</text>
+          <rect x="384" y="52" width="160" height="56" rx="9" fill="#121a2b" stroke="#34d399"/><text x="464" y="76" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">KV Cache</text><text x="464" y="95" text-anchor="middle">KIVI / FP8 / PagedAttention</text>
+          <rect x="564" y="52" width="160" height="56" rx="9" fill="#121a2b" stroke="#fbbf24"/><text x="644" y="76" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">结构</text><text x="644" y="95" text-anchor="middle">层 / 头 / FFN 通道 / 专家</text>
+          <rect x="744" y="52" width="145" height="56" rx="9" fill="#121a2b" stroke="#fb7185"/><text x="816" y="76" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">采样步数</text><text x="816" y="95" text-anchor="middle">步数蒸馏 / Cache 跳过</text>
+          <rect x="909" y="52" width="147" height="56" rx="9" fill="#121a2b" stroke="#60a5fa"/><text x="982" y="76" text-anchor="middle" fill="#fff" font-size="12.5" font-weight="700">输出资产</text><text x="982" y="95" text-anchor="middle">mesh 减面 / 视频编码</text>
+        </g>
+        <path d="M104 130 V160 H980 V130" stroke="url(#g0)" fill="none" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <text x="542" y="184" text-anchor="middle" fill="#8a99b5" font-size="11.5">共同目标：在给定硬件预算下，把「每 token / 每像素 / 每帧 / 每个面」的成本压到最低，同时守住质量底线</text>
+      </svg>
+      <div class="cap">图 0-1　压缩对象全景：前四个作用于模型本身，后两个作用于推理过程与产物</div>
+    </div>
+    <div class="note"><strong>贯穿全篇的一条原则：</strong>先问「这个改动在真实内核里能不能省时间/显存」，再问「算法能不能做到」。非结构化稀疏在数学上有 50% 零值，但普通 GEMM 仍然做同样乘法；FP8 只有在支持 FP8 Tensor Core 的硬件上才拿到峰值加速。算法收益 ≠ 工程收益。</div>
+  </section>
+
+  <!-- ==================== 01 ==================== -->
+  <section class="sec" id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>剪枝：从矩阵到结构的手术</h2><span class="sub">Pruning · 删掉冗余，让网络真的变小</span></div>
+
+    <h3>1.1 分类学：同样是「剪」，结构后果完全不同</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>类型</th><th>最小可移除单元</th><th>矩阵 / 张量形状变化</th><th>代表性算法</th><th>真实加速条件</th><th>恢复训练</th></tr></thead>
+      <tbody>
+        <tr><td><b>非结构化</b></td><td>单个权重 W<sub>ij</sub></td><td><code>[d_out, d_in]</code> 形状不变，部分元素置 0</td><td>Magnitude、Wanda、SparseGPT</td><td>需要稀疏内核；通用 GEMM 通常不加速</td><td>通常不需要；高稀疏度建议少量</td></tr>
+        <tr><td><b>半结构化 2:4</b></td><td>每 4 个连续权重保留 2 个</td><td>形状不变，固定 50% 掩码模式</td><td>SparseGPT、Wanda（<code>--sparsity_type 2:4</code>）</td><td>NVIDIA Ampere+ 稀疏 Tensor Core（理论 2×）</td><td>一般不需要</td></tr>
+        <tr><td><b>结构化 · 神经元 / 通道</b></td><td>FFN 中间列、注意力头、QKV 输出通道</td><td><code>[d_out, d_in] → [d_out, k]</code>，相邻层耦合维度同步收缩</td><td>LLM-Pruner（group）+ DepGraph</td><td>普通稠密内核直接加速</td><td><b>必须</b>，通常 LoRA 恢复</td></tr>
+        <tr><td><b>结构化 · 层</b></td><td>整个 Transformer Block</td><td>层数 32 → 28，config 同步修改</td><td>LayerDrop / 层重要性排序</td><td>直接加速，显存线性下降</td><td><b>必须</b></td></tr>
+        <tr><td><b>Token 剪枝</b></td><td>输入 prompt / 视觉 patch token</td><td><code>[T, d] → [k, d]</code>，序列长度变短</td><td>FastV、VisionZip、IDPruner、MInference</td><td>预填充/注意力复杂度下降（<code>O(T²) → O(k²)</code>）</td><td>通常不需要</td></tr>
+        <tr><td><b>专家剪枝</b></td><td>MoE 中的整个 expert / router 分支</td><td>专家数 E → E′，路由表尺寸变化</td><td>Expert pruning / 路由重分配</td><td>显存下降明显；需重新均衡负载</td><td><b>必须</b></td></tr>
+        <tr><td><b>稀疏注意力</b></td><td>注意力矩阵中的块 / 模式</td><td>掩码模式变化，权重形状不变</td><td>MInference、FlexPrefill、XAttention</td><td>长上下文 prefill 加速显著</td><td>不需要</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="figure">
+      <svg viewBox="0 0 1080 300" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="24" fill="#e6edf7" font-size="14" font-weight="700">同一层 Linear 在四种剪枝下的结构变化（示意：8×8 矩阵）</text>
+        <!-- unstructured -->
+        <g transform="translate(24,50)">
+          <text x="0" y="0" fill="#22d3ee" font-size="12" font-weight="700">① 非结构化</text>
+          <g id="m1"></g>
+          <text x="0" y="200" fill="#8a99b5" font-size="11">形状 8×8 不变 · 断点随机</text>
+        </g>
+        <!-- 2:4 -->
+        <g transform="translate(288,50)">
+          <text x="0" y="0" fill="#a78bfa" font-size="12" font-weight="700">② 半结构化 2:4</text>
+          <g id="m2"></g>
+          <text x="0" y="200" fill="#8a99b5" font-size="11">每 4 列留 2 列 · 硬件友好</text>
+        </g>
+        <!-- structured -->
+        <g transform="translate(552,50)">
+          <text x="0" y="0" fill="#34d399" font-size="12" font-weight="700">③ 结构化通道</text>
+          <g id="m3"></g>
+          <text x="0" y="200" fill="#8a99b5" font-size="11">8×6 · 真实缩小，无需稀疏内核</text>
+        </g>
+        <!-- layer -->
+        <g transform="translate(816,50)">
+          <text x="0" y="0" fill="#fbbf24" font-size="12" font-weight="700">④ 层剪枝</text>
+          <g id="m4"></g>
+          <text x="0" y="200" fill="#8a99b5" font-size="11">Block 数减少 · config 同步改</text>
+        </g>
+      </svg>
+      <div class="cap">图 1-1　剪枝的四种粒度：只有「真删维度 / 真删层」才能让普通推理引擎直接拿到加速</div>
+    </div>
+
+    <h3>1.2 通用七步操作流程（所有模态都适用）</h3>
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b"><h4>建立基线与预算（不要跳过）</h4><p>固定随机种子、固定评测集、固定 prompt 模板，记录：PPL / 任务准确率 / FID / FVD / ULIP，以及显存峰值、首 token 延迟、吞吐。同时写下硬约束，例如「至少 50% 稀疏」「显存 ≤ 24 GB」「PPL 上升 ≤ 0.5」。</p><div class="stage-out">产物 → baseline.json（可复现的实验基线）</div></div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b"><h4>依赖图发现（Discovery）：找出最小可移除单元 group</h4><p>Transformer 里一个维度常被多条路径共用：残差相加要求分支宽度一致；RMSNorm / LayerNorm 的参数与隐藏维绑定；GQA 下一个 KV 头被多个 query 头共用；FFN 的 up/gate/down 三矩阵在中间维耦合。DepGraph 把耦合的层与维度合并成一个 <strong>group</strong>，剪枝时整组一起删，否则会破坏张量相加/拼接的形状一致性。</p><p>结构化剪枝工具（LLM-Pruner）会先跑这一步；非结构化剪枝可以跳过。</p><div class="stage-out">产物 → 依赖图 / group 列表（记录每个 group 覆盖的层与轴）</div></div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b"><h4>重要性估计（Estimation）：给每个 group / 权重打分</h4><p>常见四种评分：</p><ul>
+        <li><b>Magnitude</b>：<code>s<sub>ij</sub> = |W<sub>ij</sub>|</code>，零成本但忽略激活尺度。</li>
+        <li><b>Wanda</b>：<code>s<sub>ij</sub> = |W<sub>ij</sub>| · ‖X<sub>j</sub>‖₂</code>，按输出行做 per-output 比较，需要 128 条左右校准样本，无反向传播。</li>
+        <li><b>Taylor / 一阶梯度</b>：<code>I(g) ≈ |∂L/∂W<sub>g</sub> · W<sub>g</sub>|</code>，LLM-Pruner 默认 <code>param_mix</code> 会混合一阶与二阶近似，需要反向，显存开销更大。</li>
+        <li><b>二阶 / Hessian（SparseGPT、OBS）</b>：用 <code>H = XXᵀ</code> 的逆更新剩余权重以补偿误差，精度最高，成本也最高。</li>
+      </ul><div class="stage-out">产物 → importance score（每权重的标量或每 group 的分数）</div></div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b"><h4>生成掩码并施加</h4><p>非结构化：<code>M = 1[s &gt; threshold]</code>，<code>W ← W ⊙ M</code>；2:4：在每 4 个连续权重内保留分数最高的 2 个；结构化：按 group 分数排序后删除整组索引，用 <code>torch.index_select</code> / 切片重建权重张量，并同步修改 <code>config.json</code>（hidden_size、intermediate_size、num_attention_heads、num_key_value_heads、num_hidden_layers）。</p><div class="stage-out">产物 → 掩码 / 新权重 / 新 config</div></div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b"><h4>结构重建与导出</h4><p>注意绑定权重（tied embedding 与 lm_head 必须同步）；GQA 下 query 头数与 KV 头数比例必须保持整数；每层宽度可能不同，LLM-Pruner 官方因此使用 <code>torch.save</code> 而不是 HF <code>from_pretrained</code> 加载。导出时验证 safetensors 中每个张量的形状与 config 一致。</p><div class="stage-out">产物 → 可加载的剪枝 checkpoint</div></div></div>
+      <div class="step"><div class="step-n">06</div><div class="step-b"><h4>恢复训练（Recovery）</h4><p>结构化剪枝会实质性损害模型，必须做 post-training。LLM-Pruner 官方用 5 万条 Alpaca 样本、LoRA r=8、2 epoch、lr 1e-4；大规模语料版本用 259 万条 LaMini-instruction、3 epoch、lr 5e-5。剪枝强度越大，恢复数据越多。注意 Llama-2 训练用 bf16（fp16 容易出 NaN）。</p><div class="stage-out">产物 → 恢复后的模型 + LoRA 权重（可 merge）</div></div></div>
+      <div class="step"><div class="step-n">07</div><div class="step-b"><h4>验收与部署</h4><p>先测 PPL 与任务精度，再测 MACs / 参数量 / 显存，最后测真实引擎吞吐。若用 2:4，确认推理后端启用了稀疏内核；若为非结构化，先确认是否有稀疏 kernel，否则实测往往「参数少了、速度没变」。最后做长上下文与长尾任务回归。</p><div class="stage-out">产物 → 验收报告（精度 + 速度 + 显存三项）</div></div></div>
+    </div>
+
+    <h3>1.3 五种代表算法：公式、代价与适用边界</h3>
+    <div class="grid g2">
+      <div class="card cyan"><div class="kicker">MAGNITUDE</div><h4>幅值剪枝：一切的地基</h4><p>把权重绝对值最小的置 0。优点：无数据、无梯度、可解释；缺点：忽略输入通道尺度，高稀疏度下精度掉得快。通常作为 baseline 而不是最终方案。Wanda 论文中 LLaMA-7B 50% 非结构化稀疏的 PPL：magnitude 8.45，Wanda 6.18，SparseGPT 6.32（FP16 基线 5.68）。</p></div>
+      <div class="card violet"><div class="kicker">WANDA · ICLR 2024</div><h4>权重 × 激活范数</h4><p><code>s<sub>ij</sub> = |W<sub>ij</sub>| · ‖X<sub>j</sub>‖₂</code>。按每个输出行独立比较，保证每个输出神经元保留相似容量。只需约 128 条 × 2048 token 的校准文本，不做权重更新、不需要反向传播；支持 <code>unstructured / 2:4 / 4:8</code>。适合「一小时出结果」的 one-shot 场景。</p>
+        <div class="code-block"><div class="code-top"><span>Wanda 官方命令</span><button class="copy-btn">复制</button></div><pre>python main.py \
+  --model decapoda-research/llama-7b-hf \
+  --prune_method wanda \
+  --sparsity_ratio 0.5 \
+  --sparsity_type unstructured \
+  --save out/llama_7b/unstructured/wanda/
+
+<span class="c"># 硬件友好的 2:4 半结构化</span>
+python main.py --model ... --prune_method wanda \
+  --sparsity_ratio 0.5 --sparsity_type 2:4 \
+  --save out/llama_7b/2-4/wanda/</pre></div>
+      </div>
+      <div class="card green"><div class="kicker">SPARSEGPT · ICML 2023</div><h4>Hessian 补偿的 one-shot 稀疏</h4><p>逐层用校准激活构造 <code>H = XXᵀ</code>，按列选择要剪的权重，并把被剪列造成的误差用 <code>OBS</code> 更新分摊到剩余权重：<code>W ← W − e·uᵀ / H⁻¹<sub>jj</sub></code>。因此 50% 稀疏几乎不掉点。支持非结构化、2:4、以及「稀疏 + 4bit」联合压缩。代价是 H 的求逆与更新开销。</p>
+        <div class="code-block"><div class="code-top"><span>SparseGPT 官方命令</span><button class="copy-btn">复制</button></div><pre>python opt.py facebook/opt-125m c4 --sparsity .5   <span class="c"># 50% 非结构化</span>
+python opt.py facebook/opt-125m c4 --prunen 2 --prunem 4 <span class="c"># 2:4</span>
+python opt.py facebook/opt-125m c4 --sparsity .5 --wbits 4 <span class="c"># 稀疏 + 量化</span>
+python llama.py LLAMA_HF_WEIGHTS_LOCATION c4 --sparsity 0.5</pre></div>
+      </div>
+      <div class="card amber"><div class="kicker">LLM-PRUNER · NEURIPS 2023</div><h4>靠依赖图做真正的结构压缩</h4><p>三阶段：<b>Discovery</b>（找 group）→ <b>Estimation</b>（Taylor 打分）→ <b>Recover</b>（LoRA 恢复）。支持 block-wise / channel-wise / layer-wise 三种策略，支持 Llama-3.1 / Llama-3 / Llama-2 / BLOOM / Vicuna / Baichuan / TinyLlama，并已支持 GQA。官方例子：Llama-7B 剪掉约 20% 参数后恢复训练，可接近原始模型能力。</p>
+        <div class="code-block"><div class="code-top"><span>LLM-Pruner 官方命令</span><button class="copy-btn">复制</button></div><pre><span class="c"># ① 剪枝：Taylor 估计 + 块级剪枝</span>
+python hf_prune.py --pruning_ratio 0.25 --block_wise \
+  --block_mlp_layer_start 4 --block_mlp_layer_end 30 \
+  --block_attention_layer_start 4 --block_attention_layer_end 30 \
+  --pruner_type taylor --device cpu --eval_device cuda \
+  --save_ckpt_log_name llama_prune
+
+<span class="c">② 恢复：Alpaca 5 万条 + LoRA</span>
+python post_training.py --prune_model prune_log/.../pytorch_model.bin \
+  --data_path yahma/alpaca-cleaned --lora_r 8 \
+  --num_epochs 2 --learning_rate 1e-4 --batch_size 64</pre></div>
+      </div>
+      <div class="card blue"><div class="kicker">DEPGROUP · CVPR 2023</div><h4>跨架构的通用依赖建模</h4><p>把网络解析成图，自动识别耦合组，让同一套剪枝器能用于 Transformer、CNN、检测器等不同结构。LLM-Pruner 的 group 发现就建立在 DepGraph 思路上。适合你想把剪枝迁移到自定义多模态模型（ViT + 投影层 + LLM）时使用。</p></div>
+      <div class="card rose"><div class="kicker">TOKEN / ATTENTION 剪枝</div><h4>不改权重，改「进入模型的序列」</h4><p>VLM 中大量视觉 token 是冗余的：FastV 依据注意力在后层丢弃 patch token，VisionZip 在前者聚合相似 token，AngelSlim 提供通用 metadata-driven 视觉 token pruning/merging 框架。LLM 长上下文侧，MInference 用 A-shape / Tri-shape 等稀疏模式加速 prefill。结构变化是 <code>[T,d] → [k,d]</code> 或注意力掩码变化，权重完全不动。</p></div>
+    </div>
+
+    <div class="danger"><strong>剪枝最常见的三个坑：</strong>① 把「非结构化稀疏率」当成「加速倍数」——没有稀疏内核时速度几乎不变；② 结构化剪枝后忘记同步 config / 绑定权重 / GQA 头数比例，加载即报错；③ 剪完不做恢复训练就上评测，得到「剪枝不可用」的错误结论。</div>
+  </section>
+
+  <!-- ==================== 02 ==================== -->
+  <section class="sec" id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>量化：从浮点到整数的每一步</h2><span class="sub">Quantization · 精度换显存与带宽</span></div>
+
+    <h3>2.1 数学基础：一个公式解释所有 INT 量化</h3>
+    <div class="formula">Q(r) = clamp( round(r / s) + z, q<sub>min</sub>, q<sub>max</sub> )　·　r̂ = s · ( Q(r) − z )　<span class="cm">// s=scale（步长）, z=zero-point（零点）</span></div>
+    <p>若 <code>z = 0</code> 且量化区间关于 0 对称，称为<strong>对称量化</strong>（LLM 权重常用）；否则是<strong>非对称/仿射量化</strong>（激活常用，因为 ReLU 后分布不关于 0 对称）。量化粒度从粗到细：per-tensor → per-channel → per-group（典型 g128）→ per-block / per-token。粒度越细精度越好，scale/zero-point 的额外存储越多。</p>
+    <div class="grid g3">
+      <div class="card cyan"><div class="kicker">FLOAT FORMATS</div><h4>FP8 / FP4</h4><p><code>e4m3fn</code>：4 位指数 + 3 位尾数，动态范围小但精度较好，是 Hopper/FLUX 常用格式；<code>e5m2</code>：范围大、尾数少。NVFP4 / MXFP4 是 4 位浮点，需要 Blackwell 等新硬件。浮点量化通常不需要 zero-point。</p></div>
+      <div class="card violet"><div class="kicker">INTEGER FORMATS</div><h4>INT8 / INT4 / NF4</h4><p>INT8 用 256 个均匀台阶；INT4 只有 16 个台阶，必须配 per-group scale。NF4（QLoRA 使用）是按正态分布设计的 4 位非均匀格式，对权重分布更友好。GGUF 的 Q4_K_M 是 K-quant 分组 + 混合精度方案。</p></div>
+      <div class="card amber"><div class="kicker">NOTATION</div><h4>WxAy 记法</h4><p>W4A16 = 4-bit 权重、16-bit 激活（weight-only，省显存为主）；W8A8 = 权重和激活都 8-bit（省显存 + 算力）；W4A8 是折中。KV Cache 位宽单独标记，常见 KV8 / KV4。</p></div>
+    </div>
+
+    <h3>2.2 量化对象与结构变化</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>量化对象</th><th>原始张量</th><th>量化后结构</th><th>典型收益</th><th>主要风险</th></tr></thead>
+      <tbody>
+        <tr><td>权重（weight-only）</td><td><code>W: [d_out, d_in]</code> BF16</td><td>int4/int8 数据 + <code>scale: [d_out, d_in/g]</code>，形状不变</td><td>显存 ↓50%–75%，decode 带宽收益大</td><td>离群通道掉点；需要专用 kernel</td></tr>
+        <tr><td>权重 + 激活</td><td><code>W</code> 与 <code>X</code> BF16</td><td>W8A8 + 每层/每 token scale；矩阵乘走 INT8 Tensor Core</td><td>算力 ↑，prefill / batch 收益明显</td><td>激活离群值必须平滑（SmoothQuant）</td></tr>
+        <tr><td>KV Cache</td><td><code>[L, 2, T, H<sub>kv</sub>, d<sub>h</sub>]</code> BF16</td><td>同形状，元素 8/4-bit；K 按通道、V 按 token 量化（KIVI）</td><td>长上下文并发数提升 2–4×</td><td>逐 token 误差累积，需 per-head 校验</td></tr>
+        <tr><td>梯度 / 优化器状态</td><td>训练中的 fp32 主权重 + momentum/variance</td><td>NF4 双重量化 + 分页优化器（QLoRA）</td><td>微调 65B 模型单卡可行</td><td>只用于训练，不直接改善推理</td></tr>
+        <tr><td>扩散模型 DiT / UNet</td><td>去噪网络 BF16</td><td>FP8 e4m3 权重（per-tensor 或 weight-only）</td><td>FLUX 24GB → 12GB 级</td><td>VAE / 文本编码器通常保留高精度</td></tr>
+        <tr><td>输出资产</td><td>mesh / 视频帧</td><td>减面、纹理图集压缩、H.264/H.265 编码</td><td>存储与传输成本下降</td><td>不影响推理速度，影响交付质量</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>2.3 PTQ 八步标准流程（训练后量化）</h3>
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b"><h4>按硬件选方案，而不是按比特数选</h4><p>Hopper（H100/H200）优先 FP8 W8A8；Ampere/Ada（A100/4090）优先 INT4 W4A16（AWQ / GPTQ），也可走 Marlin 内核；CPU / llama.cpp 走 GGUF Q4_K_M；Blackwell 可用 NVFP4。先查部署框架支持矩阵（例如 vLLM 官方文档列出 AWQ/GPTQ/FP8/INT8/GGUF 在不同算力上的支持情况）。</p><div class="stage-out">产物 → 量化方案 + 目标内核</div></div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b"><h4>准备校准集</h4><p>128–512 条样本即可（AWQ / Wanda 论文用 128 条），长度 2048 token 左右，<strong>必须与真实业务分布接近</strong>（中文场景用中文语料，代码场景用代码）。不需要标签。校准集只用于统计激活范围/重要性，不用于训练权重。</p><div class="stage-out">产物 → calib.jsonl</div></div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b"><h4>插入 Observer 统计分布</h4><p>对每个待量化线性层挂 hook，记录输入 <code>X</code> 与权重 <code>W</code> 的 min/max、直方图或 MSE/KL 最优阈值。这一步得到的 scale/zero-point 决定后续所有量化误差。按 per-channel 或 per-group 记录比 per-tensor 精度显著更好。</p><div class="stage-out">产物 → scale / zero-point 表</div></div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b"><h4>处理离群值（决定 INT4 成败的关键）</h4><ul>
+        <li><b>SmoothQuant</b>：把激活上的离群值「搬」到权重上——<code>W′ = W·diag(s)</code>，<code>X′ = diag(s)⁻¹X</code>，其中 <code>s<sub>j</sub> = max|X<sub>j</sub>|<sup>α</sup> / max|W<sub>ij</sub>|<sup>1−α</sup></code>，典型 α≈0.5。之后 W8A8 才做得准。</li>
+        <li><b>AWQ</b>：识别约 1% 的显著权重通道，用逐通道缩放保护它们：<code>min<sub>s</sub> ‖ Q(W·s)·(s⁻¹X) − WX ‖²</code>。只做缩放搜索，不做反向传播，泛化好。</li>
+        <li><b>GPTQ</b>：用 Hessian 重构最小化层输出误差，配合 <code>act-order</code>（按激活重要性排序量化列）与 <code>true-sequential</code>（块内顺序量化）。Llama-7B Wiki2 PPL 从 RTN 4bit 的 6.29 降到 6.09；<code>act-order</code> 让 7B 从 7.15 降到 6.09。</li>
+      </ul><div class="stage-out">产物 → 保护后的量化参数 / 缩放因子</div></div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b"><h4>执行量化与打包</h4><p>把浮点权重映射成 int4/int8 并打包（例如两个 int4 塞进一个 byte），写入 safetensors / GGUF，同时保存量化配置 <code>quantization_config</code>（bits、group_size、scheme、sym、ignore 列表）。通常把 LayerNorm / RMSNorm、embedding、lm_head、router 保留高精度。</p><div class="stage-out">产物 → 量化 checkpoint</div></div></div>
+      <div class="step"><div class="step-n">06</div><div class="step-b"><h4>先 fake quant 评估，再 real quant 评估</h4><p>AWQ 官方流程明确分两步：<code>--q_backend fake</code> 做模拟量化快速筛参，<code>--q_backend real</code> 生成真实权重。 Fake 与 real 的 PPL 若差距明显，说明 kernel / 打包路径有问题。</p><div class="stage-out">产物 → 精度对比表</div></div></div>
+      <div class="step"><div class="step-n">07</div><div class="step-b"><h4>部署并锁定内核</h4><p>启动服务时显式指定量化方式与内核。vLLM 会在硬件不支持请求的激活量化时自动回退到 weight-only（W8A8 → W8A16），这<strong>不掉精度但也不再是你校准过的方案</strong>；严格模式设 <code>VLLM_STRICT_QUANT_SCHEME=1</code> 可禁止静默回退。</p><div class="stage-out">产物 → 实际运行的服务 + 日志</div></div></div>
+      <div class="step"><div class="step-n">08</div><div class="step-b"><h4>回归、监控、准备回滚</h4><p>对比 PPL / MMLU / GSM8K / 业务集，以及 TTFT、TPOT、并发上限。保留原始 BF16 checkpoint 与完整配置，一旦长尾任务劣化立刻回滚或对该层提高位宽（混合精度逐张量分配）。</p><div class="stage-out">产物 → 上线报告 + 回滚点</div></div></div>
+    </div>
+
+    <h3>2.4 主流量化方法横向对比</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>方法</th><th>位宽/模式</th><th>校准</th><th>精度损失</th><th>硬件</th><th>适用</th></tr></thead>
+      <tbody>
+        <tr><td><b>FP8 W8A8</b></td><td>8bit 浮点，e4m3fn</td><td>需要（静态）/ 不需要（动态）</td><td><span class="pill g">极小 &lt;0.5%</span></td><td>Hopper / Ada 及更新</td><td>服务端高精度、生成模型首选</td></tr>
+        <tr><td><b>AWQ</b></td><td>INT4/INT3 W4A16，g128</td><td>128–1024 条文本</td><td><span class="pill g">小</span></td><td>Turing 起广泛支持</td><td>大模型生产服务、MoE 友好、VLM</td></tr>
+        <tr><td><b>GPTQ</b></td><td>INT4/INT3 W4A16，可 g128</td><td>较大校准集，Hessian 重构</td><td><span class="pill a">1–2%</span></td><td>兼容性最广</td><td>生态最全、需要最大兼容性</td></tr>
+        <tr><td><b>GPTAQ</b></td><td>INT4，激活感知的 GPTQ 变体</td><td>校准</td><td><span class="pill g">优于 GPTQ</span></td><td>同 GPTQ</td><td>AngelSlim 支持的低比特方案</td></tr>
+        <tr><td><b>SmoothQuant</b></td><td>W8A8</td><td>校准迁移离群</td><td><span class="pill g">小</span></td><td>INT8 Tensor Core</td><td>激活离群严重的 LLM</td></tr>
+        <tr><td><b>NF4（QLoRA）</b></td><td>4bit 非均匀 + 双重量化</td><td>无需校准（训练时学习）</td><td><span class="pill a">微调场景可接受</span></td><td>消费级 GPU</td><td>低显存微调，不是推理主力</td></tr>
+        <tr><td><b>GGUF Q4_K_M / Q8_0</b></td><td>K-quant 混合精度</td><td>可用 imatrix 重要性矩阵</td><td><span class="pill a">档位相关</span></td><td>llama.cpp / Ollama</td><td>本地 CPU/小显存设备</td></tr>
+        <tr><td><b>NVFP4 / MXFP4</b></td><td>4bit 浮点 + 块缩放</td><td>calibration</td><td><span class="pill a">硬件相关</span></td><td>Blackwell / Hopper 新内核</td><td>新一代低比特高吞吐</td></tr>
+        <tr><td><b>TEQUILA / Sherry</b></td><td>三元 ~1.67bit / 1.25bit</td><td>专用训练/校准</td><td><span class="pill r">明显</span></td><td>专用内核</td><td>极致端侧压缩（AngelSlim）</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>2.5 QAT：什么时候 PTQ 不够</h3>
+    <div class="grid g2">
+      <div class="card violet"><div class="kicker">WHEN QAT</div><h4>触发条件</h4><p>目标 &lt; 4 bit；激活也要量化到 4–8 bit；领域非常窄但对精度敏感；PTQ 后长尾任务掉点超过阈值。QAT 用直通估计器（STE）把量化不可导的 round 近似掉，在训练中让权重适应量化噪声，通常 1–3 个低学习率 epoch 即可。</p></div>
+      <div class="card green"><div class="kicker">HOW</div><h4>最小可行流程</h4><div class="code-block"><div class="code-top"><span>伪代码 · QAT 训练循环</span><button class="copy-btn">复制</button></div><pre><span class="k">for</span> layer <span class="k">in</span> model.layers:
+    layer.q = FakeQuant(bits=<span class="n">8</span>, scheme=<span class="s">'per_channel'</span>)</pre></div><p>更实用的是用 AngelSlim 的量化蒸馏配置：先得到 PTQ 模型，再以全精度模型为教师做 scale-only / 权重蒸馏，导出适配 vLLM / SGLang 的 checkpoint。</p></div>
+    </div>
+
+    <div class="warn"><strong>量化最重要的经验法则：</strong>不要整体降位宽。遇到精度瓶颈时先做逐张量敏感性分析——归一化层、router、output head、数值敏感的门控保留 BF16/FP8，参数冗余大的 QKV / FFN 上下投影压到 4bit。这个「敏感度优先、预算硬约束」的分配方式，比统一 4bit 更稳。</div>
+
+    <h3>2.6 可复制的命令：从 AWQ 到量化服务</h3>
+    <div class="code-block"><div class="code-top"><span>AWQ 官方四步（以 Llama-3-8B 为例，路径替换成你自己的）</span><button class="copy-btn">复制</button></div><pre><span class="c"># ① 搜索并保存 AWQ 缩放参数</span>
+python -m awq.entry --model_path /PATH/TO/LLAMA3/llama3-8b \
+  --w_bit 4 --q_group_size 128 --run_awq \
+  --dump_awq awq_cache/llama3-8b-w4-g128.pt
+
+<span class="c"># ② 假量化快速评估（WikiText-2 PPL）</span>
+python -m awq.entry --model_path /PATH/TO/LLAMA3/llama3-8b \
+  --tasks wikitext --w_bit 4 --q_group_size 128 \
+  --load_awq awq_cache/llama3-8b-w4-g128.pt --q_backend fake
+
+<span class="c"># ③ 生成真实 INT4 权重</span>
+python -m awq.entry --model_path /PATH/TO/LLAMA3/llama3-8b \
+  --w_bit 4 --q_group_size 128 \
+  --load_awq awq_cache/llama3-8b-w4-g128.pt \
+  --q_backend real --dump_quant quant_cache/llama3-8b-w4-g128-awq.pt
+
+<span class="c"># ④ 加载真实量化模型评估</span>
+python -m awq.entry --model_path /PATH/TO/LLAMA3/llama3-8b \
+  --tasks wikitext --w_bit 4 --q_group_size 128 \
+  --load_quant quant_cache/llama3-8b-w4-g128-awq.pt</pre></div>
+
+    <div class="code-block"><div class="code-top"><span>vLLM 部署（官方支持矩阵：AWQ 从 Turing 起，FP8 W8A8 需 Ada/Hopper）</span><button class="copy-btn">复制</button></div><pre><span class="c"># AWQ / GPTQ 量化模型</span>
+vllm serve /path/to/quantized-model --quantization awq --max-model-len 8192
+<span class="c"># FP8 模型（llm-compressor 产出）</span>
+vllm serve /path/to/fp8-model --quantization fp8
+<span class="c"># 禁止激活量化方案被静默降级为 weight-only</span>
+VLLM_STRICT_QUANT_SCHEME=1 vllm serve /path/to/fp8-model --quantization fp8</pre></div>
+  </section>
+
+  <!-- ==================== 03 ==================== -->
+  <section class="sec" id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>组合顺序：先剪结构，再降精度，最后调推理</h2><span class="sub">顺序错了，前面的努力会白费</span></div>
+    <p>剪枝与量化不是互斥关系，但它们的<strong>作用次序</strong>很重要：结构化剪枝改变了权重分布与激活尺度，如果先量化再剪枝，量化时统计的 scale 会失效；反过来先剪枝、做恢复训练，再做 PTQ，校准分布才与最终模型一致。</p>
+    <div class="flowline">
+      <div class="flownode"><b>① 基线评测</b>固定 prompt 集 / 种子 / 指标<div class="fo">baseline</div></div><span class="flowarrow">→</span>
+      <div class="flownode"><b>② 结构压缩</b>结构化剪枝 / token 剪枝<div class="fo">prune groups</div></div><span class="flowarrow">→</span>
+      <div class="flownode"><b>③ 恢复 / 蒸馏</b>LoRA post-train 或教师蒸馏<div class="fo">recover</div></div><span class="flowarrow">→</span>
+      <div class="flownode"><b>④ 精度压缩</b>PTQ（FP8 / INT4）→ 必要时 QAT<div class="fo">quantize</div></div><span class="flowarrow">→</span>
+      <div class="flownode"><b>⑤ 推理优化</b>KV 量化 / 投机解码 / Cache / 并行<div class="fo">serve</div></div><span class="flowarrow">→</span>
+      <div class="flownode"><b>⑥ 逐项验收</b>精度 / 显存 / TTFT / 吞吐<div class="fo">verify</div></div>
+    </div>
+    <div class="grid g3">
+      <div class="card cyan"><div class="kicker">RULE 1</div><h4>每次只改一个变量</h4><p>把「剪枝率 + 量化位宽 + 步数蒸馏 + Cache」四个旋钮一次性拧到底，出了问题根本无法定位。正确做法是逐级叠加、逐级评测，每一级保留 checkpoint。</p></div>
+      <div class="card violet"><div class="kicker">RULE 2</div><h4>精度预算要分层分配</h4><p>先做敏感性分析：逐层单独降 bit 看 PPL 变化。敏感层保留 8/16bit，冗余层降到 4bit。这比全模型统一降位宽更划算。</p></div>
+      <div class="card amber"><div class="kicker">RULE 3</div><h4>评测集必须覆盖长尾</h4><p>「平均 PPL 没变」不代表业务没坏：中文、代码、数学、长上下文、多轮指令、结构化输出都要测。生成模型还要测运动一致性、材质正确性等专用指标。</p></div>
+    </div>
+    <div class="note"><strong>什么时候跳过剪枝？</strong>如果你只是想让 70B 模型在 24GB 卡上跑起来，直接 AWQ W4A16 就够了，结构化剪枝需要恢复训练、重新评测，投入产出比低。剪枝更适合：显存/算力预算极紧、需要真实缩小架构、模型本身存在明显冗余（如多模态中大量视觉 token）。</div>
+  </section>
+
+  <!-- ==================== 04 ==================== -->
+  <section class="sec" id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>最佳实践 ①：大语言模型</h2><span class="sub">代表：Qwen3-235B-A22B / DeepSeek-V3·R1（MoE）、Llama-3.3-70B（Dense）</span></div>
+
+    <h3>4.1 先选对模型形态：Dense 与 MoE 的压缩策略不同</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>形态</th><th>代表开源模型</th><th>参数规模</th><th>压缩要点</th><th>不要做的事</th></tr></thead>
+      <tbody>
+        <tr><td>Dense</td><td>Llama-3.3-70B-Instruct、Qwen2.5-72B</td><td>全部参数每步参与</td><td>W4A16 AWQ/GPTQ 最成熟；结构化剪枝工具链完备</td><td>不要指望非结构化稀疏在普通引擎上加速</td></tr>
+        <tr><td>MoE</td><td>DeepSeek-V3 / R1、Qwen3-235B-A22B</td><td>总 671B / 235B，激活约 37B / 22B</td><td>FP8（W8A8）服务端首选；专家逐组 scale；router 与 gate 保 BF16；AWQ 可用于显存受限</td><td>不要一开始就剪专家；MoE 在激进低比特下先掉推理能力，再掉对话质量</td></tr>
+        <tr><td>端侧</td><td>Qwen3-8B、Llama-3.2-3B</td><td>数 B 级</td><td>GGUF Q4_K_M / Q8_0 + imatrix；或 AWQ + llama.cpp/TinyChat</td><td>不要低于 4bit 还不做任务级评测</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>4.2 服务端最佳流程：Qwen3 / DeepSeek 的 FP8 路线</h3>
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b"><h4>基线：用 BF16 跑出「真理」</h4><p>在目标 GPU 上记录 PPL（WikiText / C4）与业务集分数，记录 TTFT、TPOT、最大并发。MoE 模型要记录每专家负载分布，后面量化后要对比是否倾斜。</p></div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b"><h4>量化方案：FP8 W8A8 优先</h4><p>llm-compressor 提供 FP8 静态/动态 recipe；对 MoE，逐专家、逐 group 计算 scale，<code>router / gate / LayerNorm / lm_head</code> 保留 BF16。AngelSlim 提供 Qwen3、DeepSeek-V3/R1 的开箱配置（如 <code>configs/qwen3/fp8_static/qwen3-1_7b_fp8_static.yaml</code>），也支持单 GPU 量化 Qwen3-235B / DeepSeek-R1 这类超大模型。</p>
+        <div class="code-block"><div class="code-top"><span>AngelSlim：YAML 一键 PTQ（官方示例）</span><button class="copy-btn">复制</button></div><pre>pip install AngelSlim
+
+<span class="c"># 静态 FP8：配置驱动</span>
+python3 tools/run.py -c configs/qwen3/fp8_static/qwen3-1_7b_fp8_static.yaml
+
+<span class="c"># 或者 Python API：动态 FP8</span>
+<span class="k">from</span> angelslim.engine <span class="k">import</span> Engine
+slim_engine = Engine()
+slim_engine.prepare_model(model_name=<span class="s">"Qwen"</span>, model_path=<span class="s">"Qwen/Qwen3-1.7B"</span>)
+slim_engine.prepare_compressor(<span class="s">"PTQ"</span>, default_method=<span class="s">"fp8_dynamic"</span>)
+slim_engine.run()
+slim_engine.save(<span class="s">"./output"</span>)</pre></div>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b"><h4>没有 Hopper？退到 INT4 W4A16</h4><p>Ampere / Ada 上 AWQ 是 IoU 最高的选择：128 条中文校准样本、g128、保护 1% 显著通道。MoE 模型建议不低于 4bit，并优先 AWQ 而不是 GPTQ。vLLM 对 AWQ 的支持从 Turing 起，GPTQ 覆盖 Volta 起；MoE INT8 建议 vLLM ≥ 0.9.0。</p></div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b"><h4>可选：结构化剪枝（只在确有冗余时做）</h4><p>用 LLM-Pruner 做 20%–25% group 剪枝 → LoRA 恢复 → 再量化。注意剪枝后 config 变化、每层宽度可能不一致；如果你要部署到 vLLM/SGLang，先确认加载器支持非均匀结构，否则优先 Wanda/SparseGPT 的非结构化稀疏（但要有稀疏内核）。</p></div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b"><h4>推理层叠加</h4><p>FP8 KV Cache（长上下文必备）→ PagedAttention + Prefix Caching（共享 system prompt 可省 30%–50% 重复计算）→ EAGLE3 / DFly2 投机解码（吞吐 1.4–4.2×）→ 连续批处理 / chunked prefill。开启 vLLM 严格模式防止激活量化被静默降级。</p></div></div>
+      <div class="step"><div class="step-n">06</div><div class="step-b"><h4>验收</h4><p>PPL 差 ≤ 0.5、MMLU / C-Eval / GSM8K 掉点 ≤ 1pt；长上下文 needle-in-haystack 通过；TTFT 与 TPOT 有实测改善； MoE 专家负载未明显倾斜。</p><div class="stage-out">产物 → 量化模型 + 量化配置 + 验收报告</div></div></div>
+    </div>
+
+    <div class="figure">
+      <svg viewBox="0 0 1080 260" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="24" fill="#e6edf7" font-size="14" font-weight="700">LLM 量化/剪枝前后的结构变化（以 Dense 70B 与 MoE 为例）</text>
+        <g font-size="11" fill="#b9c7df">
+          <rect x="24" y="48" width="470" height="180" rx="10" fill="#121a2b" stroke="#243049"/>
+          <text x="44" y="74" fill="#22d3ee" font-size="12.5" font-weight="700">Dense · Llama-3.3-70B</text>
+          <text x="44" y="102">BF16：80 层 × (hidden 8192 · inter 28672 · 64 heads · 8 KV heads)</text>
+          <text x="44" y="126" fill="#fff">权重 ≈ 140 GB</text>
+          <rect x="44" y="140" width="420" height="10" rx="5" fill="#1b2740"/><rect x="44" y="140" width="420" height="10" rx="5" fill="#fb7185"/>
+          <text x="44" y="172">AWQ INT4：结构完全不变，权重 ≈ 35 GB + scale ≈ 1–2 GB</text>
+          <rect x="44" y="182" width="420" height="10" rx="5" fill="#1b2740"/><rect x="44" y="182" width="105" height="10" rx="5" fill="#34d399"/>
+          <text x="44" y="212">结构化剪枝：层数 / hidden / inter / heads 改变，需重新导出 config</text>
+
+          <rect x="514" y="48" width="542" height="180" rx="10" fill="#121a2b" stroke="#243049"/>
+          <text x="534" y="74" fill="#a78bfa" font-size="12.5" font-weight="700">MoE · DeepSeek-V3 / Qwen3-235B</text>
+          <text x="534" y="102">总参数 671B / 235B，每步只激活约 37B / 22B</text>
+          <text x="534" y="126" fill="#fff">量化必须逐专家计算 scale；router / gate 保 BF16</text>
+          <rect x="534" y="140" width="500" height="10" rx="5" fill="#1b2740"/><rect x="534" y="140" width="500" height="10" rx="5" fill="#fb7185"/>
+          <text x="534" y="172">FP8 W8A8：专家权重 8bit，激活 8bit，专家并行 EP 保持</text>
+          <rect x="534" y="182" width="500" height="10" rx="5" fill="#1b2740"/><rect x="534" y="182" width="250" height="10" rx="5" fill="#34d399"/>
+          <text x="534" y="212">专家剪枝：E → E′ 并重新训练路由，风险最高，放最后做</text>
+        </g>
+      </svg>
+      <div class="cap">图 4-1　量化只改数值位宽；结构化剪枝才改 config 与张量形状</div>
+    </div>
+
+    <h3>4.3 边缘设备流程：GGUF + imatrix</h3>
+    <div class="grid g2">
+      <div class="card green"><div class="kicker">LOCAL / CPU</div><h4>步骤</h4><ol><li>用业务语料生成 importance matrix（例如 1000 段 × 4096 token）。</li><li><code>llama-quantize --imatrix imatrix.gguf model-f16.gguf model-Q4_K_M.gguf Q4_K_M</code>。</li><li>逐张量分配：SSM 门控 / 归一化 / output head 保 8–16bit，QKV / FFN 压到 2–4bit。</li><li>按 AIME / GPQA / LiveCodeBench 等任务级基准选择档位，而不是只看 perplexity。</li></ol></div>
+      <div class="card amber"><div class="kicker">QUALITY LADDER</div><h4>档位直觉</h4><p>Q8_0：质量近乎无损，体积减半；Q4_K_M：通用首选，体积约 1/4；IQ3_S 一类：任务级接近无损但需逐任务验证；Q2_K：极端省内存，长尾能力明显下降。带 MTP 头的构建可配合 llama.cpp 投机解码拉回吞吐。</p></div>
+    </div>
+  </section>
+
+  <!-- ==================== 05 ==================== -->
+  <section class="sec" id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>最佳实践 ②：文生图模型</h2><span class="sub">代表：FLUX.1-dev / FLUX.1-schnell（12B Diffusion Transformer）</span></div>
+    <p>FLUX.1 是目前开源界事实上的画质标杆。它的<strong>瓶颈不只在 DiT</strong>：T5-XXL 文本编码器接近 10 GB，VAE 解码在高峰值显存才发生。因此最佳实践是「分组件分配精度 + 分阶段卸载」，而不是把整个 pipeline 一律 4bit。</p>
+
+    <h3>5.1 组件级精度分配表</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>组件</th><th>作用</th><th>原始显存量级</th><th>推荐精度</th><th>为什么</th></tr></thead>
+      <tbody>
+        <tr><td>DiT 主干（flux1-dev）</td><td>flow matching 去噪，约 12B 参数</td><td>BF16 ≈ 24 GB</td><td><span class="pill b">FP8 e4m3fn</span> / FP8 weight-only</td><td>收益最大、画质损失肉眼难辨；ComfyUI 官方 FP8 单文件即此方案</td></tr>
+        <tr><td>T5-XXL 文本编码器</td><td>长提示词语义理解</td><td>FP16 ≈ 9–10 GB</td><td><span class="pill b">FP8 e4m3fn</span></td><td>Conditioning 阶段峰值瓶颈；量化后提示词遵循度基本保持</td></tr>
+        <tr><td>CLIP-L</td><td>基础语义对齐（双编码器之一）</td><td>&lt; 1 GB</td><td>FP16</td><td>本就很小，量化收益低</td></tr>
+        <tr><td>VAE（ae.sft）</td><td>潜空间 ↔ 像素</td><td>数百 MB</td><td><span class="pill r">保持 FP16/BF16</span></td><td>用错 VAE 会导致过曝/全白；不要为省几百 MB 牺牲成像</td></tr>
+        <tr><td>条件 token</td><td>T5 + CLIP 输出拼接</td><td><code>[L, 4096]</code></td><td>可实验性 token 剪枝</td><td>研究阶段，生产优先不动</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>5.2 完整七步流水线（FLUX.1-dev FP8）</h3>
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b"><h4>锁定基线</h4><p>固定 10–20 条提示词（人像、文字渲染、复杂空间关系、材质光照各覆盖）与固定 seed，用 BF16 + 官方 VAE 生成参考图。记录 1024×1024、28 步、guidance≈3.5（dev）或 4 步、guidance=0（schnell）的参数。</p></div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b"><h4>只量化 DiT 主干</h4><p>diffusers + optimum-quanto 的最小可行代码；量化后必须 <code>freeze</code>，否则训练语义的 scale 仍可更新。</p>
+        <div class="code-block"><div class="code-top"><span>diffusers / optimum-quanto · FP8 权重</span><button class="copy-btn">复制</button></div><pre><span class="k">from</span> diffusers <span class="k">import</span> FluxPipeline
+<span class="k">from</span> optimum.quanto <span class="k">import</span> freeze, qfloat8, quantize
+<span class="k">import</span> torch
+
+pipe = FluxPipeline.from_pretrained(
+    <span class="s">"black-forest-labs/FLUX.1-dev"</span>, torch_dtype=torch.bfloat16)
+quantize(pipe.transformer, weights=qfloat8)
+freeze(pipe.transformer)
+pipe.to(<span class="s">"cuda"</span>)
+
+image = pipe(prompt=<span class="s">"neon-lit street, cinematic"</span>,
+             num_inference_steps=<span class="n">28</span>, guidance_scale=<span class="n">3.5</span>,
+             height=<span class="n">1024</span>, width=<span class="n">1024</span>).images[<span class="n">0</span>]</pre></div>
+        <p>或者用 AngelSlim 一行完成同样的 per-tensor FP8 推理：</p>
+        <div class="code-block"><div class="code-top"><span>AngelSlim · diffusion FP8</span><button class="copy-btn">复制</button></div><pre>python scripts/diffusion/run_diffusion.py \
+  --model-name-or-path black-forest-labs/FLUX.1-schnell \
+  --quant-type fp8-per-tensor \
+  --prompt <span class="s">"A cat holding a sign that says hello world"</span> \
+  --height <span class="n">1024</span> --width <span class="n">1024</span> --steps <span class="n">4</span> \
+  --guidance <span class="n">0.0</span> --seed <span class="n">0</span></pre></div>
+      </div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b"><h4>文本编码器单独降档</h4><p>显存 ≤ 16 GB 时把 <code>t5xxl_fp16</code> 换成 <code>t5xxl_fp8_e4m3fn</code>（ComfyUI 的 DualCLIPLoader 中指定）， Conditioning 阶段峰值明显下降；CLIP-L 维持 FP16。</p></div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b"><h4>画质 A/B</h4><p>逐张对比 LPIPS / CLIP Score / 文字渲染正确率。FP8 与 BF16 通常肉眼难辨；如果出现色偏或细节糊，先检查是否把 VAE 也量化了、是否 weight_dtype 写错（例如文件名是 fp8 却按 float16 加载，显存会飙回 20GB+）。</p></div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b"><h4>极显存场景：GGUF / NF4</h4><p>6–12 GB 显卡可用 ComfyUI-GGUF 加载 FLUX GGUF（Q4_K_S / Q5_K_M）或 NF4 版本，并配合层级卸载；前提是主机内存 ≥ 32 GB。注意这类方案牺牲的是画质与速度稳定性。</p></div></div>
+      <div class="step"><div class="step-n">06</div><div class="step-b"><h4>计算层加速：Cache + 步数蒸馏</h4><p>TeaCache / DeepCache / TaylorCache 通过缓存相邻去噪步的中间特征跳过部分计算（AngelSlim 已集成）；步数蒸馏（schnell 原生 4 步、Lightning/Turbo LoRA）把去噪循环从 28 步压到 4–8 步。两者可叠加：先减少步数，再在剩余步里跳过冗余块。</p></div></div>
+      <div class="step"><div class="step-n">07</div><div class="step-b"><h4>验收</h4><p>固定 seed 下比较 FID / CLIP Score / LPIPS 与人工观感；检查极端宽高比（如 1216×832）与文字区域；记录显存峰值与单张耗时。</p><div class="stage-out">产物 → FP8 DiT + FP8 T5 + BF16 VAE 的部署组合</div></div></div>
+    </div>
+
+    <div class="figure">
+      <svg viewBox="0 0 1080 210" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="24" fill="#e6edf7" font-size="14" font-weight="700">生图模型的结构变化：权重形状不变，变的是 dtype、被跳过的块与去噪步数</text>
+        <g font-size="11.5" fill="#c4d1e6">
+          <rect x="24" y="48" width="200" height="66" rx="9" fill="#121a2b" stroke="#22d3ee"/><text x="124" y="74" text-anchor="middle" fill="#fff">Prompt → T5 + CLIP</text><text x="124" y="98" text-anchor="middle">FP16 → FP8 T5</text>
+          <rect x="254" y="48" width="200" height="66" rx="9" fill="#121a2b" stroke="#a78bfa"/><text x="354" y="74" text-anchor="middle" fill="#fff">Latent 噪声 [B,4,H/8,W/8]</text><text x="354" y="98" text-anchor="middle">形状不变</text>
+          <rect x="484" y="48" width="280" height="66" rx="9" fill="#121a2b" stroke="#34d399"/><text x="624" y="74" text-anchor="middle" fill="#fff">DiT × 28 步（BF16 → FP8）</text><text x="624" y="98" text-anchor="middle">Cache 可跳过部分 block；蒸馏后 28 → 4 步</text>
+          <rect x="794" y="48" width="262" height="66" rx="9" fill="#121a2b" stroke="#fbbf24"/><text x="925" y="74" text-anchor="middle" fill="#fff">VAE Decode → 图像</text><text x="925" y="98" text-anchor="middle">VAE 保持 BF16/FP16</text>
+        </g>
+        <path d="M224 81 H254 M454 81 H484 M764 81 H794" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="24" y="150" fill="#8a99b5" font-size="11">可选的 token 剪枝：条件 token [L,4096] → [k,4096]（k &lt; L）；非结构化权重剪枝在此类模型中仍属研究阶段，生产首选 FP8 + Cache。</text>
+        <text x="24" y="177" fill="#8a99b5" font-size="11">显存数量级：BF16 DiT ≈ 24 GB + T5 ≈ 10 GB → FP8 DiT ≈ 12 GB + FP8 T5 ≈ 5 GB，12 GB 级显卡可行。</text>
+      </svg>
+      <div class="cap">图 5-1　生图管线的可压缩点与结构后果</div>
+    </div>
+
+    <div class="warn"><strong>生图特有的坑：</strong>① FLUX 的 FLUX.1-schnell 只需 4 步、guidance=0，照搬 SDXL 的 20–30 步与高 CFG 会过饱和；② VAE 用错（例如拿 SDXL VAE 顶替 <code>ae.sft</code>）会出全白/噪点，看起来像「量化崩了」；③ 提醒自己：FP8 单文件权重如果按 float16 加载，不会报错，只会 OOM。</div>
+  </section>
+
+  <!-- ==================== 06 ==================== -->
+  <section class="sec" id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>最佳实践 ③：文生视频模型</h2><span class="sub">代表：Wan2.2-A14B（MoE 双专家）、HunyuanVideo、LTX-Video</span></div>
+    <p>视频比图像多了一个致命维度：<strong>时间一致性</strong>。每一次去噪的微小误差会在 81 帧 × 50 步里累积，最终表现为物体变形、身份漂移、运动方向错误。因此视频模型的压缩不能只照搬 LLM/图像的经验。</p>
+
+    <h3>6.1 Wan2.2 为什么是当前开源最佳实践的载体</h3>
+    <div class="grid g3">
+      <div class="card cyan"><div class="kicker">ARCHITECTURE</div><h4>MoE 双专家</h4><p>总参数约 27B，每步只激活约 14B：高噪声专家（<code>t &gt; t<sub>moe</sub></code>）负责布局，低噪声专家负责细节，切换点由 SNR 决定。计算成本接近 14B 模型，容量接近 27B。</p></div>
+      <div class="card violet"><div class="kicker">ECOSYSTEM</div><h4>加速栈最完整</h4><p>官方支持 FSDP + DeepSpeed Ulysses（<code>--ulysses_size 8</code>）；社区有 DiffSynth-Studio（FP8、逐层卸载、序列并行）、LightX2V（4 步蒸馏 + 量化 + 轻量 VAE）、FastVideo（稀疏注意力）、Cache-dit（DBCache / TaylorSeer / Cache CFG）。</p></div>
+      <div class="card green"><div class="kicker">LICENSE</div><h4>可商用</h4><p>Apache-2.0，ComfyUI 原生节点与 diffusers 一线支持，适合生产落地；同级的 HunyuanVideo（13B）与 LTX-Video（2B/22B）也是可选路线。</p></div>
+    </div>
+
+    <h3>6.2 六步最佳实践流水线</h3>
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b"><h4>基线：先跑官方配置</h4><p>14B 级单卡官方要求 ≥ 80 GB 显存（用 <code>--offload_model True --convert_model_dtype</code>，OOM 再加 <code>--t5_cpu</code>）；TI2V-5B 在 24 GB（如 RTX 4090）上可生成 720P@24fps 5 秒视频。多卡用 <code>torchrun --nproc_per_node=8 ... --dit_fsdp --t5_fsdp --ulysses_size 8</code>。</p>
+        <div class="code-block"><div class="code-top"><span>Wan2.2 官方单卡命令</span><button class="copy-btn">复制</button></div><pre>python generate.py --task t2v-A14B --size 1280*720 \
+  --ckpt_dir ./Wan2.2-T2V-A14B \
+  --offload_model True --convert_model_dtype \
+  --prompt <span class="s">"a red car driving on a rainy street"</span>
+
+<span class="c"># 24GB 卡走 5B 版本</span>
+python generate.py --task ti2v-5B --size 1280*704 \
+  --ckpt_dir ./Wan2.2-TI2V-5B --offload_model True \
+  --convert_model_dtype --t5_cpu --prompt <span class="s">"..."</span></pre></div>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b"><h4>先做步数蒸馏：50 步 → 4–10 步</h4><p>这是视频侧收益最大的一步。LightX2V 提供 Wan2.1/2.2 的 4 步可用蒸馏模型与 LoRA；FastVideo / FastWan 用 consistency + 分布匹配把 50 步压到 5–10 步。<strong>结构变化</strong>：网络权重形状不变，变的是去噪循环次数与调度器；蒸馏 LoRA 可合并进主干。</p></div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b"><h4>量化：先 A/B，再上线</h4><p>社区常用 <code>fp8_e4m3fn</code>（4 位指数 + 3 位尾数），由 DiffSynth-Studio / LightX2V / ComfyUI WanVideoWrapper 提供。但必须做实测：有社区实验在 Wan2.2 与 LTX 上发现，同体积下 <code>Q8_0</code> 的画面漂移约为 FP8 的一半，FP8 甚至出现「红色汽车倒着开」的运动语义错误；Q4 后人物身份漂移，Q3/Q2 运动物体崩坏。这是提示词与模型相关的经验，不是普适定律——<strong>结论是：固定 seed、固定提示词，至少测 3 类运动场景再定量化的默认档</strong>。</p>
+        <div class="note">量化边界：DiT 双专家权重可量化，<code>t<sub>moe</sub></code> 切换逻辑、时间步嵌入、VAE、T5 文本编码器保持 BF16/FP16。专家的 scale 必须分别统计，否则切换点附近的画质会跳变。</div>
+      </div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b"><h4>缓存：跳过相邻去噪步的重复计算</h4><p>TeaCache 在 Wan / HunyuanVideo 上常见 1.8–2.5× 加速、FBCache 更激进可达 2–3×；Cache-dit 提供 DBCache / TaylorSeer / Cache CFG，针对 Wan2.2 的 MoE 双专家切换做了专门处理。可与步数蒸馏叠加：蒸馏把 50 步变 8 步，Cache 再跳过其中约一半的块计算，合并加速可达 5–10×。</p></div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b"><h4>注意力与并行</h4><p>视频 token 数 = 帧数 × H/patch × W/patch，注意力是 <code>O(N²)</code>。SageAttention 用低精度注意力替换 softmax 中的 matmul；VSA / FastVideo 用稀疏注意力只算重要块；多卡用 Ulysses 序列并行切分序列维。VAE 侧用 tiling / slicing 与帧分块解码避免峰值 OOM。</p></div></div>
+      <div class="step"><div class="step-n">06</div><div class="step-b"><h4>验收：别只看单帧好看</h4><p>指标：FVD（I3D 特征的 Fréchet 距离）、LPIPS / SSIM、逐帧身份一致性、光流/运动方向正确性；如果模型带音频（LTX 一类）还要单独做 Whisper 转写词错率与 mel 频谱 MSE——社区实测中音频常在 Q4 就先崩，而画面指标还没明显变化。</p><div class="stage-out">产物 → 4 步 DiT（FP8）+ TeaCache + 注意力优化的可复现配置</div></div></div>
+    </div>
+
+    <div class="figure">
+      <svg viewBox="0 0 1080 260" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="24" fill="#e6edf7" font-size="14" font-weight="700">Wan2.2 MoE 去噪循环：压缩发生在「步数、专家权重、注意力、缓存」四处</text>
+        <g font-size="11" fill="#c4d1e6">
+          <rect x="24" y="48" width="150" height="56" rx="9" fill="#121a2b" stroke="#22d3ee"/><text x="99" y="72" text-anchor="middle" fill="#fff">Text + T5</text><text x="99" y="92" text-anchor="middle">BF16 保持</text>
+          <rect x="204" y="48" width="160" height="56" rx="9" fill="#121a2b" stroke="#a78bfa"/><text x="284" y="72" text-anchor="middle" fill="#fff">Latent 视频张量</text><text x="284" y="92" text-anchor="middle">[B, C, F, H/p, W/p]</text>
+          <path d="M364 76 H400" stroke="#22d3ee" stroke-width="1.5"/>
+          <rect x="400" y="42" width="250" height="34" rx="8" fill="#1b2740" stroke="#fbbf24"/><text x="525" y="64" text-anchor="middle">t &gt; t_moe：高噪声专家（布局）</text>
+          <rect x="400" y="86" width="250" height="34" rx="8" fill="#1b2740" stroke="#34d399"/><text x="525" y="108" text-anchor="middle">t &lt; t_moe：低噪声专家（细节）</text>
+          <rect x="680" y="48" width="180" height="56" rx="9" fill="#121a2b" stroke="#fb7185"/><text x="770" y="72" text-anchor="middle" fill="#fff">VAE Decode</text><text x="770" y="92" text-anchor="middle">BF16 + tiling</text>
+          <rect x="890" y="48" width="166" height="56" rx="9" fill="#121a2b" stroke="#60a5fa"/><text x="973" y="72" text-anchor="middle" fill="#fff">帧序列</text><text x="973" y="92" text-anchor="middle">H.264/H.265</text>
+        </g>
+        <path d="M650 76 H680 M860 76 H890" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="24" y="168" fill="#8a99b5" font-size="11.5">① 步数蒸馏：50 → 4–10 次循环（权重形状不变）　② 专家权重：FP8 e4m3fn / Q8_0，逐专家 scale，router 与 timestep 保 BF16</text>
+        <text x="24" y="194" fill="#8a99b5" font-size="11.5">③ Cache：TeaCache / DBCache 跳过部分 block　④ 注意力：SageAttention / VSA 把 O(N²) 压下来　⑤ 输出：编码压缩只影响交付体积</text>
+        <text x="24" y="226" fill="#fbbf24" font-size="11">警告：视频对量化格式比对比特数更敏感——同样 8bit，社区实测 Q8_0 的运动一致性优于 FP8；务必用运动提示词做 A/B。</text>
+      </svg>
+      <div class="cap">图 6-1　视频生成管线的五处可压缩点</div>
+    </div>
+  </section>
+
+  <!-- ==================== 07 ==================== -->
+  <section class="sec" id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>最佳实践 ④：文生 3D 模型</h2><span class="sub">代表：Hunyuan3D 2.1（Shape 3.3B DiT + Paint 2B PBR）</span></div>
+    <p>3D 生成的压缩有两层含义：<strong>模型侧</strong>（Shape DiT / Paint 网络的量化与缓存）和<strong>产物侧</strong>（mesh 减面、纹理图集与 PBR 贴图压缩）。产物的结构压缩往往比模型权重压缩更能决定能不能塞进游戏引擎。</p>
+
+    <h3>7.1 两阶段架构与显存分布</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>阶段</th><th>模型</th><th>输入 → 输出</th><th>官方显存</th><th>可压缩点</th></tr></thead>
+      <tbody>
+        <tr><td>Shape（几何）</td><td>Hunyuan3D-Shape-v2-1，3.3B，DiT flow matching</td><td>单图 → 无纹理 mesh</td><td>约 10 GB</td><td>DiT 权重 FP8、flow 步数 / Cache、潜空间 token 数（研究）</td></tr>
+        <tr><td>Paint（纹理）</td><td>Hunyuan3D-Paint-v2-1，2B，PBR</td><td>mesh + 图 → 金属度/粗糙度/颜色等贴图</td><td>约 21 GB</td><td>多视图数量（默认 6）、渲染分辨率（默认 512）、逐视图批处理</td></tr>
+        <tr><td>端到端</td><td>Shape + Paint 串联</td><td>单图 → PBR 资产</td><td>约 29 GB</td><td><b>分阶段运行</b>，避免两个峰值叠加</td></tr>
+        <tr><td>产物</td><td>mesh + 贴图</td><td>高面数 → 游戏可用资产</td><td>—</td><td>减面（QEM）、LOD 链、贴图图集、法线/金属度贴图压缩</td></tr>
+      </tbody>
+    </table></div>
+    <p>官方基准中 Hunyuan3D-Shape-2.1 的 ULIP-T/I、Uni3D-T/I 等指标优于 Michelangelo、Craftsman、TripoSG、Step1X-3D、Trellis 等开源基线；Hunyuan3D-Paint-2.1 在 CLIP-FiD / CMMD / CLIP-I / LPIPS 上优于 2.0 与 SyncMVD-IPA。这是选择它作为「当前最强开源实践」的依据。</p>
+
+    <h3>7.2 五步流水线</h3>
+    <div class="steps">
+      <div class="step"><div class="step-n">01</div><div class="step-b"><h4>跑通两阶段基线</h4><p>官方 diffusers-like API，先 Shape 得到 mesh，再 Paint 得到 PBR 贴图。固定输入图与 seed，保存中间 mesh（这一步同时也是显存分阶段的关键）。</p>
+        <div class="code-block"><div class="code-top"><span>Hunyuan3D 2.1 官方代码骨架</span><button class="copy-btn">复制</button></div><pre><span class="k">from</span> textureGenPipeline <span class="k">import</span> Hunyuan3DPaintPipeline, Hunyuan3DPaintConfig
+<span class="k">from</span> hy3dshape.pipelines <span class="k">import</span> Hunyuan3DDiTFlowMatchingPipeline
+
+shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
+    <span class="s">'tencent/Hunyuan3D-2.1'</span>)
+mesh_untextured = shape_pipeline(image=<span class="s">'assets/demo.png'</span>)[<span class="n">0</span>]
+
+paint_pipeline = Hunyuan3DPaintPipeline(
+    Hunyuan3DPaintConfig(max_num_view=<span class="n">6</span>, resolution=<span class="n">512</span>))
+mesh_textured = paint_pipeline(mesh_path, image_path=<span class="s">'assets/demo.png'</span>)</pre></div>
+      </div></div>
+      <div class="step"><div class="step-n">02</div><div class="step-b"><h4>Shape DiT 做 FP8 权重量化</h4><p>优先选官方/社区提供的 FP8 权重；或用 AngelSlim 的 diffusion FP8 流程对 DiT 做 per-tensor 量化。<strong>不要动</strong>几何解码（VAE / occupancy → Marching Cubes）与 Paint 阶段的精度，前者决定表面完整性，后者决定 PBR 材质正确性。</p></div></div>
+      <div class="step"><div class="step-n">03</div><div class="step-b"><h4>分阶段 + 低显存参数</h4><p>把 Shape 生成的 mesh 落盘、释放显存，再启动 Paint。Gradio 可用 <code>--low_vram_mode</code>；ComfyUI 可加 <code>--reserve-vram 1~2</code>。控制 <code>max_num_view=6</code>、<code>resolution=512</code>，批量大小保持 1。</p>
+        <div class="code-block"><div class="code-top"><span>官方低显存启动</span><button class="copy-btn">复制</button></div><pre>python3 gradio_app.py \
+  --model_path tencent/Hunyuan3D-2.1 \
+  --subfolder hunyuan3d-dit-v2-1 \
+  --texgen_model_path tencent/Hunyuan3D-2.1 \
+  --low_vram_mode</pre></div>
+      </div></div>
+      <div class="step"><div class="step-n">04</div><div class="step-b"><h4>步数 / 缓存 / 视图裁剪</h4><p>Shape 的 flow matching 步数可用缓存类方法（TeaCache / TaylorCache，AngelSlim 已覆盖 diffusion 类模型）减少重复计算；Paint 阶段减少多视图数量或分辨率是最直接的算力旋钮，但会牺牲纹理完整度——一般优先降到 4 视图而不是降到 256 分辨率。</p></div></div>
+      <div class="step"><div class="step-n">05</div><div class="step-b"><h4>产物侧结构压缩（3D 特有）</h4><p>用 QEM（二次误差度量）减面：几十万面 → 几万面，并生成 LOD0/1/2；把多张 PBR 贴图打成图集，金属度/粗糙度合并到同一张图的不同通道；导出 glTF/GLB 时在 Unity / Unreal 中验证材质。注意：这一步<strong>不改变模型权重</strong>，但决定资产能否实时渲染。</p><div class="stage-out">产物 → FP8 Shape DiT + 分阶段脚本 + LOD 资产</div></div></div>
+    </div>
+
+    <div class="figure">
+      <svg viewBox="0 0 1080 230" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="24" fill="#e6edf7" font-size="14" font-weight="700">3D 管线的结构变化：模型侧改 dtype，产物侧改拓扑与贴图</text>
+        <g font-size="11.5" fill="#c4d1e6">
+          <rect x="24" y="48" width="150" height="56" rx="9" fill="#121a2b" stroke="#22d3ee"/><text x="99" y="72" text-anchor="middle" fill="#fff">输入图</text><text x="99" y="92" text-anchor="middle">DINOv2 特征</text>
+          <rect x="204" y="48" width="190" height="56" rx="9" fill="#121a2b" stroke="#a78bfa"/><text x="299" y="72" text-anchor="middle" fill="#fff">Shape DiT（3.3B）</text><text x="299" y="92" text-anchor="middle">BF16 → FP8；步数可 Cache</text>
+          <rect x="424" y="48" width="180" height="56" rx="9" fill="#121a2b" stroke="#34d399"/><text x="514" y="72" text-anchor="middle" fill="#fff">Latent → Mesh</text><text x="514" y="92" text-anchor="middle">[N,64] → 顶点/面</text>
+          <rect x="634" y="48" width="180" height="56" rx="9" fill="#121a2b" stroke="#fbbf24"/><text x="724" y="72" text-anchor="middle" fill="#fff">Paint（2B, PBR）</text><text x="724" y="92" text-anchor="middle">6 视图 × 512 → 贴图</text>
+          <rect x="844" y="48" width="212" height="56" rx="9" fill="#121a2b" stroke="#fb7185"/><text x="950" y="72" text-anchor="middle" fill="#fff">减面 / LOD / 图集</text><text x="950" y="92" text-anchor="middle">面数 ↓、贴图通道合并</text>
+        </g>
+        <path d="M174 76 H204 M394 76 H424 M604 76 H634 M814 76 H844" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="24" y="148" fill="#8a99b5" font-size="11.5">显存：Shape ≈ 10 GB，Paint ≈ 21 GB，串联 ≈ 29 GB → 分阶段运行把峰值拆开；8–12 GB 卡配合 FP8 + --low_vram_mode 可走完全流程。</text>
+        <text x="24" y="176" fill="#8a99b5" font-size="11.5">评测：ULIP-T/I、Uni3D-T/I（几何），CLIP-FiD、CMMD、CLIP-I、LPIPS（纹理）；减面后再测一遍视觉退化。</text>
+      </svg>
+      <div class="cap">图 7-1　3D 生成的两层压缩</div>
+    </div>
+
+    <div class="note"><strong>3D 与 LLM 最重要的差异：</strong>LLM 的「结构变化」指网络层/维度，3D 还有一层「生成结果的结构变化」（mesh 拓扑与贴图布局）。把这两层混在一起谈，是很多 3D 压缩文章让人看不懂的原因。</div>
+  </section>
+
+  <!-- ==================== 08 ==================== -->
+  <section class="sec" id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>其他优化手段：剪枝与量化之外的工具箱</h2><span class="sub">12 种手段 · 原理 / 结构变化 / 何时用 / 风险</span></div>
+
+    <div class="grid g2">
+      <div class="card cyan"><div class="kicker">01 · DISTILLATION</div><h4>知识蒸馏</h4><p><b>原理：</b>教师 softmax / logits / 中间特征监督学生，<code>L = α·KL(p<sub>T</sub>‖p<sub>S</sub>) + (1−α)·CE(y,p<sub>S</sub>)</code>。<b>结构变化：</b>学生可以是更小的层数/宽度，也可以是同结构的量化模型。<b>何时用：</b>剪枝后恢复、低比特补偿、扩散模型的步数蒸馏（DMD2 / consistency）。<b>风险：</b>教师偏好的长尾行为会被继承，需保留原任务评测。</p></div>
+      <div class="card violet"><div class="kicker">02 · SPECULATIVE DECODING</div><h4>投机解码</h4><p><b>原理：</b>小模型一次猜 γ 个 token，大模型一次并行验证；接受概率 <code>α = 1 − min(1, p/q)</code>，拒绝时从修正分布重采样。<b>结构变化：</b>增加草稿头/草稿模型（EAGLE3、Medusa、MTP、DFly2），主模型权重不动。<b>何时用：</b>低并发、长输出、延迟敏感。<b>风险：</b>高温采样接受率下降；显存要多放一份草稿模型。</p></div>
+      <div class="card green"><div class="kicker">03 · KV CACHE</div><h4>KV Cache 量化与分页</h4><p><b>原理：</b>把 K/V 从 16bit 降到 8/4bit；KIVI 对 key 按通道、value 按 token 量化以控制离群；PagedAttention 用分页管理避免碎片。<b>结构变化：</b><code>[L,2,T,H<sub>kv</sub>,d<sub>h</sub>]</code> 的元素位宽与内存布局变化。<b>何时用：</b>长上下文、高并发。<b>风险：</b>极长上下文下逐 token 误差累积，需 per-head 抽检。</p></div>
+      <div class="card amber"><div class="kicker">04 · TOKEN PRUNING</div><h4>Token / Patch 剪枝与合并</h4><p><b>原理：</b>依据注意力分数或相似度丢弃冗余视觉/文本 token。<b>结构变化：</b><code>[T,d] → [k,d]</code>，注意力矩阵从 <code>T²</code> 降到 <code>k²</code>。<b>何时用：</b>VLM 高分辨率图像、视频多帧、长文档。<b>代表：</b>FastV、VisionZip、DivPrune、IDPruner。<b>风险：</b>小目标、细粒度文字最先被丢掉。</p></div>
+      <div class="card blue"><div class="kicker">05 · SPARSE ATTENTION</div><h4>稀疏注意力 / 长上下文模式</h4><p><b>原理：</b>只计算注意力矩阵中的部分块（A-shape、Tri-shape、滑动窗口 + 汇聚点）。<b>结构变化：</b>掩码模式变化，权重不变。<b>何时用：</b>32K–1M 上下文 prefill。<b>代表：</b>MInference、FlexPrefill、XAttention、FlashPrefill。<b>风险：</b>需要「大海捞针」评测，警惕中间位置丢失。</p></div>
+      <div class="card rose"><div class="kicker">06 · FLASH ATTENTION</div><h4>IO 感知的精确注意力</h4><p><b>原理：</b>分块计算、避免把 <code>N×N</code> 注意力矩阵写回 HBM，数学上精确无近似。<b>结构变化：</b>只换内核，模型和掩码语义不变。<b>何时用：</b>几乎所有 GPU 训练/推理的默认项。<b>风险：</b>版本与 GPU 架构绑定；小序列收益有限。</p></div>
+      <div class="card cyan"><div class="kicker">07 · LOW-RANK</div><h4>低秩分解 / LoRA 合并</h4><p><b>原理：</b>用 <code>ΔW = BA</code>（r ≪ d）近似权重变化。<b>结构变化：</b>训练时多两条旁路，推理时可合并回 <code>W′ = W + (α/r)BA</code>，零额外延迟。<b>何时用：</b>微调、多任务热切换、压缩恢复训练。<b>风险：</b>秩太低拟合不了复杂任务。</p></div>
+      <div class="card violet"><div class="kicker">08 · EARLY EXIT</div><h4>提前退出 / 自适应计算</h4><p><b>原理：</b>在中间层挂分类器，简单样本提前输出。<b>结构变化：</b>增加若干轻量 head，主干不变；推理时跳过后续层。<b>代表：</b>SpecExit（官方称推理长度减少约 66%）。<b>风险：</b>退出阈值需要按任务校准，复杂推理题容易误退。</p></div>
+      <div class="card green"><div class="kicker">09 · STEP DISTILLATION</div><h4>扩散步数蒸馏 / 一致性模型</h4><p><b>原理：</b>把多步去噪映射压缩到 1–8 步。<b>结构变化：</b>权重形状不变，去噪循环长度与调度器变化，常以 LoRA 形式交付。<b>代表：</b>FLUX schnell（4 步）、LightX2V / FastWan（视频）、LCM / Turbo。<b>风险：</b>细节与文字渲染下降，需重调 guidance。</p></div>
+      <div class="card amber"><div class="kicker">10 · FEATURE CACHE</div><h4>跨步特征缓存</h4><p><b>原理：</b>相邻去噪步的特征高度相似，缓存后跳过部分 block。<b>结构变化：</b>计算图按步动态跳过，权重完全不动。<b>代表：</b>TeaCache、DeepCache、FBCache、TaylorCache、DBCache。<b>风险：</b>快速运动镜头跳过过多会丢时序细节。</p></div>
+      <div class="card blue"><div class="kicker">11 · PARALLELISM</div><h4>并行策略与调度</h4><p><b>原理：</b>TP（张量维切分）、PP（层切分）、EP（MoE 专家切分）、CP/SP（序列切分）、连续批处理与 chunked prefill。<b>结构变化：</b>权重分片布局与通信拓扑变化，数学等价。<b>何时用：</b>大模型 / 长视频 / 高分辨率 3D。<b>风险：</b>通信开销可能吃掉加速收益。</p></div>
+      <div class="card rose"><div class="kicker">12 · ASSET COMPRESSION</div><h4>产物级压缩</h4><p><b>原理：</b>mesh 减面与 LOD、贴图图集与 ASTC/BCn 压缩、视频 H.264/H.265。<b>结构变化：</b>只改输出资产拓扑与编码，模型完全不动。<b>何时用：</b>游戏/AR/移动端交付。<b>风险：</b>不影响推理速度，但直接影响最终观感，需人工复核。</p></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>这 12 种手段与剪枝 / 量化的关系</h3><span class="hint">哪些改权重、哪些改计算图、哪些只改产物</span></div>
+      <div class="panel-body"><div class="table-wrap"><table>
+        <thead><tr><th>层级</th><th>手段</th><th>是否改权重数值</th><th>是否改张量形状/计算图</th><th>主要收益</th></tr></thead>
+        <tbody>
+          <tr><td>权重层</td><td>量化、低秩分解、结构化剪枝、非结构化剪枝</td><td>是</td><td>量化否；剪枝/低秩是</td><td>显存 / 带宽 / 算力</td></tr>
+          <tr><td>激活与序列层</td><td>token 剪枝、稀疏注意力、KV 量化、FlashAttention</td><td>否</td><td>序列长度 / 掩码 / 内核</td><td>prefill 与长上下文</td></tr>
+          <tr><td>解码层</td><td>投机解码、提前退出、步数蒸馏、特征缓存</td><td>通常否（蒸馏 LoRA 可合并）</td><td>是</td><td>延迟 / 步数</td></tr>
+          <tr><td>系统层</td><td>并行、连续批处理、PagedAttention、卸载</td><td>否</td><td>分片与调度</td><td>吞吐 / 并发</td></tr>
+          <tr><td>产物层</td><td>减面 / LOD / 贴图 / 视频编码</td><td>否</td><td>输出资产</td><td>存储与传输</td></tr>
+        </tbody>
+      </table></div></div>
+    </div>
+  </section>
+
+  <!-- ==================== 09 ==================== -->
+  <section class="sec" id="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>选型、评测与避坑清单</h2><span class="sub">把前面的内容压成一张决策表</span></div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>按模态的最短可行路径</h3><span class="hint">点击标签切换</span></div>
+      <div class="panel-body">
+        <div class="tabs">
+          <button class="tab active" data-tab="tab-llm">大语言模型</button>
+          <button class="tab" data-tab="tab-img">文生图</button>
+          <button class="tab" data-tab="tab-vid">文生视频</button>
+          <button class="tab" data-tab="tab-3d">文生 3D</button>
+        </div>
+        <div class="tabpane active" id="tab-llm"><p><b>Hopper + 服务端：</b>BF16 基线 → llm-compressor / AngelSlim 做 FP8 W8A8（router/norm/head 保 BF16）→ FP8 KV Cache → 严格内核模式 → EAGLE3 / DFly2 投机解码 → PPL + 任务集 + TTFT/TPOT 验收。</p><p><b>Ampere/Ada：</b>AWQ W4A16 g128（128 条领域校准）→ vLLM <code>--quantization awq</code> → 若掉点，先逐张量提精度而不是整体升 bit。</p><p><b>本地 CPU/小显存：</b>imatrix → GGUF Q4_K_M → 任务级基准选档 → MTP 投机解码。</p></div>
+        <div class="tabpane" id="tab-img"><p>固定提示词 + seed 的 BF16 基线 → DiT 做 FP8 e4m3fn（diffusers quanto / AngelSlim / ComfyUI 官方 FP8 文件）→ T5 换 FP8 → VAE 保持 BF16 → LPIPS / CLIP / 文字渲染 A/B → 需要更快时叠加 TeaCache 与 4 步蒸馏 → 极低显存才用 GGUF/NF4。</p></div>
+        <div class="tabpane" id="tab-vid"><p>官方 BF16 基线（80GB 跑 A14B，24GB 跑 TI2V-5B）→ LightX2V 4 步蒸馏 → 量化 A/B（FP8 e4m3fn vs Q8_0，必须测运动提示词）→ TeaCache / DBCache → SageAttention / VSA → Ulysses 序列并行与 VAE tiling → FVD + 身份一致性 + 运动方向验收。</p></div>
+        <div class="tabpane" id="tab-3d"><p>Shape 与 Paint 分阶段跑基线（10GB / 21GB）→ Shape DiT FP8 → <code>--low_vram_mode</code> / <code>--reserve-vram</code> / 批大小 1 → 缓存减步 → 4 视图替代 6 视图 → QEM 减面 + LOD + 贴图图集 → ULIP / Uni3D / CLIP-FiD / CMMD 复测。</p></div>
+      </div>
+    </div>
+
+    <h3>9.1 验收指标对照表</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>模态</th><th>质量指标</th><th>效率指标</th><th>必须做的定性检查</th><th>常见失效信号</th></tr></thead>
+      <tbody>
+        <tr><td>LLM</td><td>PPL、MMLU / C-Eval、GSM8K、HumanEval、长上下文 needle</td><td>显存峰值、TTFT、TPOT、最大并发</td><td>中文 / 代码 / 数学 / 多轮 / 结构化输出</td><td>推理能力先掉；重复输出；格式错乱</td></tr>
+        <tr><td>文生图</td><td>FID、CLIP Score、LPIPS、文字渲染准确率</td><td>单张耗时、显存峰值</td><td>手部、文字、复杂光照、极端宽高比</td><td>色偏、过曝、细节糊、提示词遵循下降</td></tr>
+        <tr><td>文生视频</td><td>FVD、LPIPS / SSIM、身份一致性、光流方向</td><td>秒/视频、显存峰值、可生成帧数</td><td>运动物体方向、人物面部、遮挡关系</td><td>运动倒放、身份漂移、闪烁、音频先崩</td></tr>
+        <tr><td>文生 3D</td><td>ULIP-T/I、Uni3D-T/I、CLIP-FiD、CMMD、LPIPS</td><td>Shape / Paint 各自耗时与显存</td><td>多视角一致性、PBR 材质、引擎内渲染</td><td>表面破损、贴图错位、金属度异常</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>9.2 上线前最终检查清单</h3>
+    <div class="grid g2">
+      <div class="card green"><div class="kicker">DO</div><ul style="margin-left:16px"><li>保留 BF16 原始 checkpoint 与各阶段中间产物</li><li>量化配置随模型一起版本化（bits / scheme / group / ignore）</li><li>固定 seed 与提示词做 A/B，报告差值而非绝对值</li><li>先逐张量敏感性分析，再决定不同层的位宽</li><li>用目标推理引擎实测，不信理论 FLOPs</li><li>检查 vLLM 是否发生静默内核回退</li></ul></div>
+      <div class="card rose"><div class="kicker">DON'T</div><ul style="margin-left:16px"><li>不要把非结构化稀疏率当作加速倍数</li><li>不要对 MoE 的 router / gate 做低比特量化</li><li>不要量化 VAE / 时间步嵌入等高敏感小模块</li><li>不要一次性叠加剪枝 + 4bit + 蒸馏 + Cache</li><li>不要只看平均指标，忽略长尾与业务分布</li><li>不要在未知内核支持的硬件上承诺加速</li></ul></div>
+    </div>
+
+    <div class="warn"><strong>回滚策略：</strong>一旦发现质量退化，按逆序撤销：先关 Cache → 再恢复步数 → 再把量化升到 8bit → 最后才恢复剪枝前的结构。因为越靠后的改动越「便宜」，先撤它能最快定位问题。</div>
+  </section>
+
+  <!-- ==================== 10 ==================== -->
+  <section class="sec" id="s10">
+    <div class="sec-head"><span class="sec-num">10</span><h2>资料来源与版本说明</h2><span class="sub">所有流程均可回溯到一手材料</span></div>
+    <div class="panel"><div class="panel-head"><h3>核心算法与工具</h3><span class="hint">GitHub / 论文</span></div><div class="panel-body src">
+      <p><a href="https://github.com/mit-han-lab/llm-awq" target="_blank" rel="noopener">mit-han-lab/llm-awq</a>（AWQ，MLSys 2024 最佳论文；含四步命令、模型 zoo、DeepSeek-R1-Distill / BF16 支持） · <a href="https://github.com/IST-DASLab/gptq" target="_blank" rel="noopener">IST-DASLab/gptq</a>（GPTQ，act-order / true-sequential / 分组量化） · <a href="https://github.com/IST-DASLab/SparseGPT" target="_blank" rel="noopener">IST-DASLab/SparseGPT</a>（非结构化 / 2:4 / 稀疏+4bit） · <a href="https://github.com/luuyin/wanda" target="_blank" rel="noopener">luuyin/wanda</a>（Wanda，ICLR 2024） · <a href="https://github.com/horseee/LLM-Pruner" target="_blank" rel="noopener">horseee/LLM-Pruner</a>（NeurIPS 2023，三阶段流程与恢复训练命令）</p>
+      <p><a href="https://github.com/vllm-project/vllm/tree/main/docs/features/quantization" target="_blank" rel="noopener">vLLM 量化文档</a>（方法清单、硬件支持矩阵、静默回退与严格模式） · <a href="https://github.com/Tencent/AngelSlim" target="_blank" rel="noopener">Tencent/AngelSlim</a>（FP8/INT4/NVFP4、稀疏注意力、token 剪枝、DeepCache/TeaCache、Eagle3/DFly2，覆盖 LLM / VLM / Diffusion / Video / 3D / Speech）</p>
+    </div></div>
+    <div class="panel"><div class="panel-head"><h3>四类模型的代表项目</h3><span class="hint">架构与最佳实践依据</span></div><div class="panel-body src">
+      <p>LLM：<a href="https://github.com/QwenLM/Qwen3" target="_blank" rel="noopener">Qwen3</a>、<a href="https://github.com/deepseek-ai/DeepSeek-V3" target="_blank" rel="noopener">DeepSeek-V3</a> / <a href="https://github.com/deepseek-ai/DeepSeek-R1" target="_blank" rel="noopener">R1</a>（MoE 激活参数与 FP8 训练）。</p>
+      <p>生图：<a href="https://huggingface.co/black-forest-labs/FLUX.1-dev" target="_blank" rel="noopener">FLUX.1-dev</a> / <a href="https://huggingface.co/black-forest-labs/FLUX.1-schnell" target="_blank" rel="noopener">schnell</a>、diffusers + optimum-quanto FP8 量化示例、ComfyUI 官方 FP8 工作流。</p>
+      <p>生视频：<a href="https://github.com/Wan-Video/Wan2.2" target="_blank" rel="noopener">Wan2.2</a>（MoE 双专家 / FSDP + Ulysses / 社区加速生态）、LightX2V（4 步蒸馏与量化）、DiffSynth-Studio（FP8、逐层卸载）、Cache-dit（DBCache）。社区量化对比实验用于「FP8 vs Q8_0」的风险提示，属经验数据而非官方结论。</p>
+      <p>生 3D：<a href="https://github.com/Tencent-Hunyuan/Hunyuan3D-2.1" target="_blank" rel="noopener">Hunyuan3D-2.1</a>（Shape 3.3B / Paint 2B、显存 10/21/29 GB、官方评测表与低显存参数）。</p>
+    </div></div>
+    <div class="note">版本说明：模型版本、量化 kernel 与框架支持变化很快（尤其是 vLLM 的支持矩阵与 MoE 低比特支持）。本文的数字用于建立量级直觉，真正落地前请以对应仓库当前 README 与你的实测为准。</div>
+    <div class="footer">VLMTune · 模型压缩实验室　|　建议学习顺序：00 → 01 → 02 → 03 → 04/05/06/07 → 08 → 09　|　<a href="index.html">← 返回主实验室</a></div>
+  </section>
+
+  </div>
+</main>
+</div>
+<script>
+(function(){
+  const NS='http://www.w3.org/2000/svg';
+  /* ---------- 目录高亮 ---------- */
+  const links=[...document.querySelectorAll('#toc a')];
+  const secs=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const spy=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){
+      links.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+e.target.id));
+    }});
+  },{rootMargin:'-12% 0px -70% 0px'});
+  secs.forEach(s=>spy.observe(s));
+
+  /* ---------- 显存计算器 ---------- */
+  const $=id=>document.getElementById(id);
+  function calc(){
+    const P=+$('iP').value, B=+$('iB').value, C=+$('iC').value,
+          T=+$('iT').value, L=+$('iL').value, H=+$('iH').value, K=+$('iK').value;
+    $('oP').textContent=P; $('oB').textContent=B; $('oC').textContent=C;
+    $('oT').textContent=T.toLocaleString('en-US'); $('oL').textContent=L;
+    $('oH').textContent=H+'×128'; $('oK').textContent=K;
+    const w=P*1e9*B/8/(1024**3);
+    const kv=2*L*C*T*H*128*(K/8)/(1024**3);
+    const bf=P*1e9*16/8/(1024**3);
+    const total=w+kv;
+    $('mW').textContent=w.toFixed(1)+' GB';
+    $('mK').textContent=kv.toFixed(1)+' GB';
+    $('mT').textContent=total.toFixed(1)+' GB';
+    $('mS').textContent=((1-w/bf)*100).toFixed(1)+'%';
+    $('val1').textContent=bf.toFixed(1)+' GB';
+    $('val2').textContent=w.toFixed(1)+' GB';
+    $('bar2').style.width=Math.max(2,(w/bf*100)).toFixed(1)+'%';
+  }
+  ['iP','iB','iC','iT','iL','iH','iK'].forEach(id=>$(id).addEventListener('input',calc));
+  calc();
+
+  /* ---------- 剪枝结构示意图 ---------- */
+  function cell(g,x,y,fill,text){
+    const r=document.createElementNS(NS,'rect');
+    r.setAttribute('x',x); r.setAttribute('y',y);
+    r.setAttribute('width',20); r.setAttribute('height',20);
+    r.setAttribute('rx',3); r.setAttribute('fill',fill);
+    r.setAttribute('stroke','#243049'); g.appendChild(r);
+    if(text){const t=document.createElementNS(NS,'text');
+      t.setAttribute('x',x+10);t.setAttribute('y',y+14);
+      t.setAttribute('text-anchor','middle');t.setAttribute('font-size','9');
+      t.setAttribute('fill','#07101f');t.textContent=text;g.appendChild(t);}
+  }
+  function drawMat(id, cols, pattern){
+    const g=$(id); if(!g) return;
+    for(let r=0;r<8;r++) for(let c=0;c<cols;c++){
+      const on=pattern(r,c);
+      cell(g,c*23,r*23+22,on?'#22d3ee':'#1b2740',on?'':'0');
+    }
+  }
+  drawMat('m1',8,(r,c)=>((r*7+c*3)%9)!==0);
+  drawMat('m2',8,(r,c)=>((c%4)+(r%2))%4<2);
+  drawMat('m3',6,(r,c)=>c<6);
+  (function(){
+    const g=$('m4'); if(!g) return;
+    for(let i=0;i<8;i++){
+      const on=i!==2&&i!==5;
+      const r=document.createElementNS(NS,'rect');
+      r.setAttribute('x',0);r.setAttribute('y',22+i*23);
+      r.setAttribute('width',184);r.setAttribute('height',18);r.setAttribute('rx',4);
+      r.setAttribute('fill',on?'#34d399':'#1b2740');
+      r.setAttribute('stroke',on?'#34d399':'#243049');g.appendChild(r);
+      const t=document.createElementNS(NS,'text');
+      t.setAttribute('x',92);t.setAttribute('y',35+i*23);
+      t.setAttribute('text-anchor','middle');t.setAttribute('font-size','9');
+      t.setAttribute('fill',on?'#07101f':'#64748b');
+      t.textContent=on?'Block '+i:'removed';g.appendChild(t);
+    }
+  })();
+
+  /* ---------- 标签页 ---------- */
+  document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===btn));
+    document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('active',p.id===btn.dataset.tab));
+  }));
+
+  /* ---------- 代码复制 ---------- */
+  document.querySelectorAll('.copy-btn').forEach(btn=>btn.addEventListener('click',async()=>{
+    const pre=btn.closest('.code-block').querySelector('pre');
+    try{ await navigator.clipboard.writeText(pre.innerText);
+      const old=btn.textContent; btn.textContent='已复制';
+      setTimeout(()=>btn.textContent=old,1400);
+    }catch(e){ btn.textContent='复制失败'; setTimeout(()=>btn.textContent='复制',1400); }
+  }));
+})();
+</script>
+</body>
+</html>
